@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kasus 3: Antrian Rumah Sakit (Priority Queue)</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0f1a;
+      --surface: #111827;
+      --surface2: #1a2235;
+      --border: #1f2d45;
+      --p0: #ef4444; --p0l: rgba(239,68,68,0.12);
+      --p1: #f97316; --p1l: rgba(249,115,22,0.12);
+      --p2: #eab308; --p2l: rgba(234,179,8,0.12);
+      --p3: #22c55e; --p3l: rgba(34,197,94,0.12);
+      --info: #3b82f6;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --code-bg: #070d18;
+    }
+
+    body { font-family:'Sora',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:2rem 1rem; }
+    .page { max-width:980px; margin:0 auto; animation:fadeUp 0.4s ease; }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes slideIn { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes popIn { from{opacity:0;transform:scale(0.92)} to{opacity:1;transform:scale(1)} }
+
+    /* HEADER */
+    .header { margin-bottom:2rem; padding-left:1.1rem; position:relative; }
+    .header::before { content:''; position:absolute; left:0; top:0; width:4px; height:100%; background:linear-gradient(180deg,var(--p0),var(--p1),var(--p2)); border-radius:2px; }
+    .header-tag { font-family:'JetBrains Mono',monospace; font-size:0.67rem; color:var(--p1); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.4rem; }
+    .header h1 { font-size:1.85rem; font-weight:700; line-height:1.25; }
+    .header p { margin-top:0.35rem; color:var(--muted); font-size:0.85rem; }
+
+    /* PRIORITY LEGEND */
+    .legend { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:1.2rem; }
+    .leg { display:flex; align-items:center; gap:6px; padding:5px 12px; border-radius:20px; font-size:0.72rem; font-weight:600; border:1px solid; }
+    .leg-0 { background:var(--p0l); border-color:var(--p0); color:var(--p0); }
+    .leg-1 { background:var(--p1l); border-color:var(--p1); color:var(--p1); }
+    .leg-2 { background:var(--p2l); border-color:var(--p2); color:var(--p2); }
+    .leg-3 { background:var(--p3l); border-color:var(--p3); color:var(--p3); }
+
+    /* STATS */
+    .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:1.2rem; }
+    @media(max-width:560px){ .stats { grid-template-columns:repeat(2,1fr); } }
+    .stat { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:0.8rem; text-align:center; }
+    .stat-val { font-size:1.5rem; font-weight:700; font-family:'JetBrains Mono',monospace; line-height:1; }
+    .stat-lbl { font-size:0.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-top:4px; }
+
+    /* MAIN GRID */
+    .main-grid { display:grid; grid-template-columns:1fr 1.1fr; gap:1.2rem; margin-bottom:1.2rem; }
+    @media(max-width:640px){ .main-grid { grid-template-columns:1fr; } }
+
+    /* CARD */
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.2rem; }
+    .card-label { font-family:'JetBrains Mono',monospace; font-size:0.62rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:0.9rem; display:flex; align-items:center; gap:6px; }
+    .card-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* FORM */
+    label { font-size:0.75rem; color:var(--muted); display:block; margin-bottom:3px; margin-top:10px; }
+    label:first-child { margin-top:0; }
+    input[type="text"] {
+      width:100%; background:var(--code-bg); border:1px solid var(--border); color:var(--text);
+      padding:8px 11px; border-radius:7px; font-family:'JetBrains Mono',monospace; font-size:0.78rem;
+    }
+    input[type="text"]:focus { outline:none; border-color:var(--info); }
+
+    .priority-select { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; }
+    .prio-btn {
+      padding:7px 6px; border-radius:7px; font-size:0.72rem; font-weight:600;
+      font-family:'Sora',sans-serif; cursor:pointer; border:1.5px solid transparent;
+      transition:all 0.15s ease; text-align:center; background:var(--surface2); color:var(--muted);
+    }
+    .prio-btn.p0 { border-color:var(--p0)44; }
+    .prio-btn.p0.active, .prio-btn.p0:hover { background:var(--p0l); border-color:var(--p0); color:var(--p0); }
+    .prio-btn.p1 { border-color:var(--p1)44; }
+    .prio-btn.p1.active, .prio-btn.p1:hover { background:var(--p1l); border-color:var(--p1); color:var(--p1); }
+    .prio-btn.p2 { border-color:var(--p2)44; }
+    .prio-btn.p2.active, .prio-btn.p2:hover { background:var(--p2l); border-color:var(--p2); color:var(--p2); }
+    .prio-btn.p3 { border-color:var(--p3)44; }
+    .prio-btn.p3.active, .prio-btn.p3:hover { background:var(--p3l); border-color:var(--p3); color:var(--p3); }
+
+    .btn-enq {
+      width:100%; margin-top:12px; padding:10px; font-size:0.82rem; font-weight:700;
+      font-family:'Sora',sans-serif; cursor:pointer; border:none; border-radius:8px;
+      background:var(--info); color:#fff; transition:all 0.15s;
+    }
+    .btn-enq:hover { opacity:0.85; transform:translateY(-1px); }
+
+    /* QUICK PRESETS */
+    .preset-row { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
+    .preset-btn {
+      font-family:'JetBrains Mono',monospace; font-size:0.67rem; padding:4px 9px;
+      border-radius:5px; cursor:pointer; border:1px solid var(--border);
+      background:var(--surface2); color:var(--muted); transition:all 0.12s;
+    }
+    .preset-btn:hover { color:var(--text); border-color:var(--muted); }
+
+    /* PRIORITY QUEUE DISPLAY */
+    .pq-sections { display:flex; flex-direction:column; gap:8px; }
+    .pq-section { border-radius:8px; overflow:hidden; }
+    .pq-section-header {
+      display:flex; align-items:center; gap:7px; padding:6px 10px;
+      font-size:0.67rem; font-weight:700; font-family:'JetBrains Mono',monospace;
+      letter-spacing:0.06em; text-transform:uppercase;
+    }
+    .pq-section-header .count-badge {
+      margin-left:auto; padding:1px 7px; border-radius:10px; font-size:0.62rem;
+    }
+    .pq-items { display:flex; flex-direction:column; gap:3px; padding:6px; background:var(--code-bg); }
+    .pq-item {
+      display:flex; align-items:center; gap:8px; padding:6px 10px;
+      border-radius:5px; font-family:'JetBrains Mono',monospace; font-size:0.74rem;
+      animation:popIn 0.2s ease;
+    }
+    .pq-num { color:var(--muted); min-width:18px; font-size:0.62rem; }
+    .pq-name { flex:1; }
+    .pq-time { font-size:0.62rem; color:var(--muted); }
+    .pq-next-badge { font-size:0.6rem; padding:2px 7px; border-radius:4px; font-weight:700; font-family:'Sora',sans-serif; }
+    .empty-slot { font-size:0.72rem; color:var(--muted)55; text-align:center; padding:6px; font-style:italic; }
+
+    /* CONTROL + LOG */
+    .bottom-grid { display:grid; grid-template-columns:auto 1fr; gap:1.2rem; margin-bottom:1.2rem; align-items:start; }
+    @media(max-width:640px){ .bottom-grid { grid-template-columns:1fr; } }
+
+    .ctrl-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.2rem; display:flex; flex-direction:column; gap:8px; min-width:180px; }
+    .btn-deq {
+      padding:11px 20px; font-size:0.85rem; font-weight:700; font-family:'Sora',sans-serif;
+      cursor:pointer; border:none; border-radius:8px; background:linear-gradient(135deg,var(--p0),var(--p1));
+      color:#fff; white-space:nowrap; transition:all 0.15s;
+    }
+    .btn-deq:hover { opacity:0.85; transform:translateY(-1px); }
+    .btn-deq:disabled { opacity:0.3; cursor:not-allowed; transform:none; }
+    .btn-deq-all {
+      padding:9px 14px; font-size:0.75rem; font-weight:600; font-family:'Sora',sans-serif;
+      cursor:pointer; border:1px solid var(--border); border-radius:8px;
+      background:var(--surface2); color:var(--muted); transition:all 0.15s;
+    }
+    .btn-deq-all:hover { color:var(--text); border-color:var(--muted); }
+    .btn-reset-g {
+      padding:9px 14px; font-size:0.75rem; font-family:'Sora',sans-serif; cursor:pointer;
+      border:1px solid var(--border); border-radius:8px; background:transparent; color:var(--muted); transition:all 0.15s;
+    }
+    .btn-reset-g:hover { color:#ef4444; border-color:#ef4444; }
+
+    .status-box {
+      padding:8px 11px; background:var(--code-bg); border-radius:6px;
+      font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--muted);
+      border-left:3px solid var(--border); transition:all 0.3s;
+    }
+    .status-box.serving { border-color:var(--p0); color:var(--p0); }
+
+    /* LOG */
+    .log-area {
+      background:var(--code-bg); border:1px solid var(--border); border-radius:8px;
+      padding:1rem; min-height:150px; max-height:250px; overflow-y:auto;
+      font-family:'JetBrains Mono',monospace; font-size:0.73rem;
+      display:flex; flex-direction:column; gap:3px;
+    }
+    .l-cm { color:#374151; }
+    .l-enq { color:var(--info); }
+    .l-serve { color:var(--p0); }
+    .l-p0 { color:var(--p0); } .l-p1 { color:var(--p1); }
+    .l-p2 { color:var(--p2); } .l-p3 { color:var(--p3); }
+    .l-done { color:#22c55e; font-weight:600; }
+    .l-sep { color:var(--border); }
+
+    /* CURRENTLY SERVING */
+    .serving-card {
+      background:var(--surface); border:1px solid var(--border); border-radius:12px;
+      padding:1rem 1.2rem; margin-bottom:1.2rem; display:flex; align-items:center; gap:14px;
+      transition:all 0.3s;
+    }
+    .serving-card.active { border-color:var(--p0); background:rgba(239,68,68,0.05); }
+    .serving-icon { font-size:2rem; }
+    .serving-info { flex:1; }
+    .serving-name { font-size:1.1rem; font-weight:700; }
+    .serving-sub { font-size:0.75rem; color:var(--muted); margin-top:2px; }
+    .serving-prio { padding:4px 12px; border-radius:20px; font-size:0.72rem; font-weight:700; }
+
+    /* CODE */
+    .code-card { background:var(--code-bg); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+    .code-header { background:var(--surface); border-bottom:1px solid var(--border); padding:7px 14px; display:flex; align-items:center; gap:6px; }
+    .dot { width:10px; height:10px; border-radius:50%; }
+    .d1{background:#ef4444;} .d2{background:#f59e0b;} .d3{background:#22c55e;}
+    .code-lang { margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:0.62rem; color:var(--muted); }
+    pre { padding:1rem 1.25rem; font-family:'JetBrains Mono',monospace; font-size:0.77rem; line-height:1.85; overflow-x:auto; color:#cdd6f4; }
+    .kw{color:#cba6f7;} .fn{color:#89b4fa;} .st{color:#a6e3a1;} .cm{color:#6c7086;} .va{color:#cdd6f4;} .nu{color:#fab387;}
+
+    .info-box { background:rgba(59,130,246,0.07); border:1px solid rgba(59,130,246,0.2); border-radius:8px; padding:0.85rem 1rem; font-size:0.78rem; color:#93c5fd; line-height:1.6; margin-bottom:1.2rem; }
+    .info-box strong { color:#bfdbfe; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-tag">Struktur Data — Priority Queue</div>
+    <h1>Kasus 3: Antrian Rumah Sakit</h1>
+    <p>Pasien darurat didahulukan — bukan murni FIFO</p>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="leg leg-0">● 0 — Kritis</div>
+    <div class="leg leg-1">● 1 — Darurat</div>
+    <div class="leg leg-2">● 2 — Menengah</div>
+    <div class="leg leg-3">● 3 — Ringan</div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat"><div class="stat-val" style="color:var(--p0)" id="s0">0</div><div class="stat-lbl">Kritis</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--p1)" id="s1">0</div><div class="stat-lbl">Darurat</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--p2)" id="s2">0</div><div class="stat-lbl">Menengah</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--p3)" id="s3">0</div><div class="stat-lbl">Ringan</div></div>
+  </div>
+
+  <!-- CURRENTLY SERVING -->
+  <div class="serving-card" id="serving-card">
+    <div class="serving-icon">🏥</div>
+    <div class="serving-info">
+      <div class="serving-name" id="sv-name" style="color:var(--muted)">Belum ada pasien dilayani</div>
+      <div class="serving-sub" id="sv-sub">Tambah pasien, lalu klik Layani</div>
+    </div>
+    <div class="serving-prio" id="sv-prio" style="display:none"></div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- ENQUEUE PANEL -->
+    <div class="card">
+      <div class="card-label">Daftarkan Pasien — enqueue()</div>
+
+      <label>Nama pasien</label>
+      <input type="text" id="patient-name" placeholder="contoh: Budi"/>
+
+      <label>Tingkat prioritas</label>
+      <div class="priority-select">
+        <div class="prio-btn p0 active" data-p="0" onclick="selectPrio(0)">🔴 0 — Kritis</div>
+        <div class="prio-btn p1" data-p="1" onclick="selectPrio(1)">🟠 1 — Darurat</div>
+        <div class="prio-btn p2" data-p="2" onclick="selectPrio(2)">🟡 2 — Menengah</div>
+        <div class="prio-btn p3" data-p="3" onclick="selectPrio(3)">🟢 3 — Ringan</div>
+      </div>
+
+      <label style="margin-top:10px;">Preset cepat</label>
+      <div class="preset-row">
+        <span class="preset-btn" onclick="quickAdd('Budi',3)">Budi (ringan)</span>
+        <span class="preset-btn" onclick="quickAdd('Ani',0)">Ani (kritis)</span>
+        <span class="preset-btn" onclick="quickAdd('Citra',2)">Citra (menengah)</span>
+        <span class="preset-btn" onclick="quickAdd('Dedi',0)">Dedi (kritis)</span>
+        <span class="preset-btn" onclick="quickAdd('Eka',1)">Eka (darurat)</span>
+      </div>
+
+      <button class="btn-enq" onclick="enqueue()">+ Daftarkan Pasien</button>
+    </div>
+
+    <!-- PRIORITY QUEUE DISPLAY -->
+    <div class="card">
+      <div class="card-label">Antrian Prioritas (BPriorityQueue)</div>
+      <div class="pq-sections" id="pq-sections"></div>
+    </div>
+  </div>
+
+  <!-- CONTROL + LOG -->
+  <div class="bottom-grid">
+    <div class="ctrl-card">
+      <div class="card-label" style="margin-bottom:0.4rem;">Pelayanan</div>
+      <div class="status-box" id="status-box">● Siap melayani</div>
+      <button class="btn-deq" id="btn-deq" onclick="dequeue()" disabled>▶ Layani Berikutnya</button>
+      <button class="btn-deq-all" onclick="dequeueAll()">⚡ Layani Semua</button>
+      <button class="btn-reset-g" onclick="resetAll()">↺ Reset</button>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Output Log</div>
+      <div class="log-area" id="log-area">
+        <div class="l-cm"># Output akan muncul di sini</div>
+        <div class="l-cm"># → Ani, Dedi, Eka, Citra, Budi</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFO -->
+  <div class="info-box">
+    <strong>Teknik kunci:</strong> Pasien dengan prioritas lebih kecil (0=kritis) dilayani lebih dulu.
+    Jika prioritas sama → FIFO (yang datang duluan dilayani duluan).
+    Contoh: <strong>Ani</strong> dan <strong>Dedi</strong> sama-sama kritis (prioritas 0), tetapi Ani datang duluan → dilayani duluan.
+  </div>
+
+  <!-- SOURCE CODE -->
+  <div class="code-card">
+    <div class="code-header">
+      <div class="dot d1"></div><div class="dot d2"></div><div class="dot d3"></div>
+      <span class="code-lang">antrian_rs.py — referensi kode</span>
+    </div>
+    <pre><span class="va">pq</span> = <span class="fn">BPriorityQueue</span>(<span class="nu">4</span>)  <span class="cm"># 4 level prioritas</span>
+
+<span class="cm"># Pasien datang</span>
+<span class="va">pq</span>.<span class="fn">enqueue</span>(<span class="st">"Budi"</span>,  <span class="nu">3</span>)  <span class="cm"># ringan</span>
+<span class="va">pq</span>.<span class="fn">enqueue</span>(<span class="st">"Ani"</span>,   <span class="nu">0</span>)  <span class="cm"># kritis!</span>
+<span class="va">pq</span>.<span class="fn">enqueue</span>(<span class="st">"Citra"</span>, <span class="nu">2</span>)  <span class="cm"># menengah</span>
+<span class="va">pq</span>.<span class="fn">enqueue</span>(<span class="st">"Dedi"</span>,  <span class="nu">0</span>)  <span class="cm"># kritis!</span>
+<span class="va">pq</span>.<span class="fn">enqueue</span>(<span class="st">"Eka"</span>,   <span class="nu">1</span>)  <span class="cm"># darurat</span>
+
+<span class="cm"># Urutan layanan</span>
+<span class="kw">while not</span> <span class="va">pq</span>.<span class="fn">isEmpty</span>():
+  <span class="fn">print</span>(<span class="va">pq</span>.<span class="fn">dequeue</span>())
+<span class="cm"># → Ani, Dedi, Eka, Citra, Budi</span></pre>
+  </div>
+
+</div>
+
+<script>
+  // BPriorityQueue: array of queues, index = priority level
+  // Lower index = higher priority
+  const LEVELS = 4;
+  const LEVEL_NAMES = ['Kritis','Darurat','Menengah','Ringan'];
+  const LEVEL_COLORS = ['var(--p0)','var(--p1)','var(--p2)','var(--p3)'];
+  const LEVEL_BG    = ['var(--p0l)','var(--p1l)','var(--p2l)','var(--p3l)'];
+  const LEVEL_EMOJI = ['🔴','🟠','🟡','🟢'];
+
+  // pq[i] = array of {name, time (arrival order)}
+  let pq = [[], [], [], []];
+  let arrival = 0;
+  let servedCount = 0;
+  let selectedPrio = 0;
+  let logReady = false;
+
+  document.getElementById('patient-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter') enqueue();
+  });
+
+  function selectPrio(p) {
+    selectedPrio = p;
+    document.querySelectorAll('.prio-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`.prio-btn[data-p="${p}"]`).classList.add('active');
+  }
+
+  function enqueue(name, prio) {
+    const n = name || document.getElementById('patient-name').value.trim();
+    const p = (prio !== undefined) ? prio : selectedPrio;
+    if (!n) { document.getElementById('patient-name').focus(); return; }
+
+    pq[p].push({ name: n, time: arrival++ });
+    if (!name) document.getElementById('patient-name').value = '';
+
+    if (!logReady) { document.getElementById('log-area').innerHTML = ''; logReady = true; }
+    addLog(`pq.enqueue("${n}", ${p})  # ${LEVEL_NAMES[p]}`, `l-p${p}`);
+
+    document.getElementById('btn-deq').disabled = false;
+    updateAll();
+  }
+
+  function quickAdd(name, prio) { enqueue(name, prio); }
+
+  function dequeue() {
+    for (let i = 0; i < LEVELS; i++) {
+      if (pq[i].length > 0) {
+        const patient = pq[i].shift();
+        servedCount++;
+        showServing(patient.name, i);
+        addLog(`pq.dequeue()  →  ${patient.name}  [${LEVEL_EMOJI[i]} ${LEVEL_NAMES[i]}]`, `l-p${i}`);
+
+        const total = pq.reduce((a, q) => a + q.length, 0);
+        if (total === 0) {
+          document.getElementById('btn-deq').disabled = true;
+          addLog('# Antrian kosong — semua pasien sudah dilayani!', 'l-done');
+        }
+        updateAll();
+        return;
+      }
+    }
+  }
+
+  function dequeueAll() {
+    const total = pq.reduce((a, q) => a + q.length, 0);
+    if (total === 0) return;
+    addLog('# --- Layani semua pasien ---', 'l-cm');
+    let delay = 0;
+    for (let i = 0; i < total; i++) {
+      setTimeout(dequeue, delay);
+      delay += 600;
+    }
+  }
+
+  function showServing(name, prio) {
+    const card = document.getElementById('serving-card');
+    card.className = 'serving-card active';
+    document.getElementById('sv-name').textContent = name;
+    document.getElementById('sv-name').style.color = LEVEL_COLORS[prio];
+    document.getElementById('sv-sub').textContent = `Dilayani sekarang • ${LEVEL_NAMES[prio]}`;
+    const badge = document.getElementById('sv-prio');
+    badge.style.display = 'block';
+    badge.style.background = LEVEL_BG[prio];
+    badge.style.color = LEVEL_COLORS[prio];
+    badge.style.border = `1px solid ${LEVEL_COLORS[prio]}`;
+    badge.textContent = `${LEVEL_EMOJI[prio]} Prioritas ${prio}`;
+
+    const sb = document.getElementById('status-box');
+    sb.textContent = `● Melayani: ${name}`;
+    sb.className = 'status-box serving';
+    setTimeout(() => {
+      if (pq.reduce((a,q) => a+q.length, 0) > 0) {
+        sb.textContent = '● Siap melayani';
+        sb.className = 'status-box';
+      }
+    }, 800);
+  }
+
+  function updateAll() {
+    renderPQ();
+    updateStats();
+  }
+
+  function updateStats() {
+    for (let i = 0; i < LEVELS; i++) {
+      document.getElementById(`s${i}`).textContent = pq[i].length;
+    }
+  }
+
+  function renderPQ() {
+    const el = document.getElementById('pq-sections');
+    el.innerHTML = '';
+    let anyItem = false;
+
+    for (let i = 0; i < LEVELS; i++) {
+      const section = document.createElement('div');
+      section.className = 'pq-section';
+
+      const header = document.createElement('div');
+      header.className = 'pq-section-header';
+      header.style.background = LEVEL_BG[i];
+      header.style.color = LEVEL_COLORS[i];
+      header.innerHTML = `
+        ${LEVEL_EMOJI[i]} Prioritas ${i} — ${LEVEL_NAMES[i]}
+        <span class="count-badge" style="background:${LEVEL_COLORS[i]}22;color:${LEVEL_COLORS[i]}">${pq[i].length}</span>
+      `;
+      section.appendChild(header);
+
+      const itemsWrap = document.createElement('div');
+      itemsWrap.className = 'pq-items';
+
+      if (pq[i].length === 0) {
+        itemsWrap.innerHTML = `<div class="empty-slot">— kosong —</div>`;
+      } else {
+        anyItem = true;
+        pq[i].forEach((p, idx) => {
+          const div = document.createElement('div');
+          div.className = 'pq-item';
+          div.style.background = idx === 0 && i === firstNonEmpty() ? LEVEL_BG[i] : 'transparent';
+          div.innerHTML = `
+            <span class="pq-num">${idx + 1}</span>
+            <span style="color:${LEVEL_COLORS[i]};font-size:10px;">●</span>
+            <span class="pq-name">${p.name}</span>
+            <span class="pq-time">#${p.time + 1}</span>
+            ${idx === 0 && i === firstNonEmpty() ? `<span class="pq-next-badge" style="background:${LEVEL_BG[i]};color:${LEVEL_COLORS[i]};">berikutnya</span>` : ''}
+          `;
+          itemsWrap.appendChild(div);
+        });
+      }
+      section.appendChild(itemsWrap);
+      el.appendChild(section);
+    }
+  }
+
+  function firstNonEmpty() {
+    for (let i = 0; i < LEVELS; i++) { if (pq[i].length > 0) return i; }
+    return -1;
+  }
+
+  function addLog(text, cls) {
+    const el = document.getElementById('log-area');
+    const div = document.createElement('div');
+    div.className = 'l-cm ' + cls;
+    div.textContent = text;
+    el.appendChild(div);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function resetAll() {
+    pq = [[], [], [], []];
+    arrival = 0; servedCount = 0;
+    document.getElementById('btn-deq').disabled = true;
+    document.getElementById('serving-card').className = 'serving-card';
+    document.getElementById('sv-name').textContent = 'Belum ada pasien dilayani';
+    document.getElementById('sv-name').style.color = 'var(--muted)';
+    document.getElementById('sv-sub').textContent = 'Tambah pasien, lalu klik Layani';
+    document.getElementById('sv-prio').style.display = 'none';
+    document.getElementById('status-box').textContent = '● Siap melayani';
+    document.getElementById('status-box').className = 'status-box';
+    document.getElementById('log-area').innerHTML = '<div class="l-cm"># Output akan muncul di sini</div>';
+    logReady = false;
+    updateAll();
+  }
+
+  // Initial render
+  renderPQ();
+  updateStats();
+</script>
+</body>
+</html>

@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kasus 1: Antrian Printer Bersama</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #181c27;
+      --surface2: #1e2333;
+      --border: #2a2f45;
+      --accent: #3b82f6;
+      --accent2: #06b6d4;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text: #e8eaf0;
+      --muted: #6b7280;
+      --code-bg: #0d1117;
+    }
+
+    body {
+      font-family: 'Sora', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* HEADER */
+    .header {
+      margin-bottom: 2.5rem;
+      position: relative;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      left: -1rem;
+      top: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      border-radius: 2px;
+    }
+    .header-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--accent2);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .header p {
+      margin-top: 0.4rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    /* GRID LAYOUT */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    /* CARD */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    .card-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .card-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* BUTTONS */
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 0.75rem;
+    }
+    button {
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn-file {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 5px 11px;
+      font-size: 0.72rem;
+    }
+    .btn-file:hover { border-color: var(--accent); color: var(--accent); }
+
+    .btn-enqueue {
+      background: var(--accent);
+      color: #fff;
+      padding: 7px 14px;
+      font-size: 0.75rem;
+      font-family: 'Sora', sans-serif;
+      font-weight: 600;
+    }
+    .btn-enqueue:hover { background: #2563eb; }
+
+    .btn-dequeue {
+      width: 100%;
+      padding: 10px;
+      font-size: 0.8rem;
+      font-family: 'Sora', sans-serif;
+      font-weight: 600;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .btn-dequeue:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn-dequeue:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+    .btn-auto {
+      width: 100%;
+      padding: 7px;
+      font-size: 0.72rem;
+      font-family: 'Sora', sans-serif;
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .btn-auto:hover { color: var(--text); border-color: var(--muted); }
+
+    /* INPUT */
+    .input-row {
+      display: flex;
+      gap: 6px;
+    }
+    input[type="text"] {
+      flex: 1;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+    }
+    input[type="text"]::placeholder { color: var(--muted); }
+    input[type="text"]:focus { outline: none; border-color: var(--accent); }
+
+    /* QUEUE DISPLAY */
+    .queue-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-height: 110px;
+    }
+    .queue-empty {
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-align: center;
+      padding: 2rem 0;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .queue-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      animation: slideIn 0.2s ease;
+    }
+    .queue-item.first {
+      border-color: var(--accent);
+      background: rgba(59,130,246,0.08);
+    }
+    .queue-num {
+      color: var(--muted);
+      min-width: 18px;
+      font-size: 0.65rem;
+    }
+    .queue-icon { font-size: 13px; }
+    .queue-name { color: var(--text); flex: 1; }
+    .queue-badge {
+      font-size: 0.6rem;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(59,130,246,0.15);
+      color: var(--accent);
+      font-family: 'Sora', sans-serif;
+      font-weight: 600;
+    }
+
+    /* STATUS */
+    .status-box {
+      padding: 9px 12px;
+      background: var(--code-bg);
+      border-radius: 7px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      margin-bottom: 12px;
+      border-left: 3px solid var(--accent2);
+      color: var(--accent2);
+      transition: all 0.3s;
+    }
+    .status-box.printing { border-color: var(--warning); color: var(--warning); }
+    .status-box.done { border-color: var(--success); color: var(--success); }
+
+    /* LOG */
+    .log-area {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      min-height: 140px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      overflow-y: auto;
+      max-height: 220px;
+    }
+    .log-line { line-height: 1.6; }
+    .log-enqueue { color: var(--muted); }
+    .log-print { color: var(--success); }
+    .log-comment { color: #4b5563; }
+    .log-separator { color: var(--border); margin: 2px 0; }
+
+    /* STATS BAR */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 1.25rem;
+    }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      text-align: center;
+    }
+    .stat-val {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      line-height: 1;
+    }
+    .stat-lbl {
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 4px;
+      font-family: 'Sora', sans-serif;
+    }
+
+    /* CODE BLOCK */
+    .code-card {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.25rem;
+    }
+    .code-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .d1 { background: #ef4444; }
+    .d2 { background: #f59e0b; }
+    .d3 { background: #22c55e; }
+    .code-lang {
+      margin-left: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+    }
+    pre {
+      padding: 1rem 1.25rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      line-height: 1.8;
+      overflow-x: auto;
+      color: #cdd6f4;
+    }
+    .kw { color: #cba6f7; }
+    .fn { color: #89b4fa; }
+    .st { color: #a6e3a1; }
+    .cm { color: #6c7086; }
+    .va { color: #cdd6f4; }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-8px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .page { animation: fadeIn 0.4s ease; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-tag">Struktur Data — Queue / FIFO</div>
+    <h1>Kasus 1: Antrian Printer Bersama</h1>
+    <p>Dokumen dicetak sesuai urutan kedatangan</p>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-val" id="s-enq">0</div>
+      <div class="stat-lbl">Total Enqueue</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="s-deq">0</div>
+      <div class="stat-lbl">Total Dicetak</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="s-q">0</div>
+      <div class="stat-lbl">Dalam Antrian</div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="grid">
+
+    <!-- ENQUEUE PANEL -->
+    <div class="card">
+      <div class="card-label">User — enqueue()</div>
+      <div class="btn-group">
+        <button class="btn-file" onclick="enqueue('laporan.pdf')">📄 laporan.pdf</button>
+        <button class="btn-file" onclick="enqueue('tugas.docx')">📝 tugas.docx</button>
+        <button class="btn-file" onclick="enqueue('foto.jpg')">🖼 foto.jpg</button>
+        <button class="btn-file" onclick="enqueue('slides.pptx')">📊 slides.pptx</button>
+        <button class="btn-file" onclick="enqueue('data.xlsx')">📋 data.xlsx</button>
+      </div>
+      <div class="input-row">
+        <input type="text" id="custom-doc" placeholder="nama_file.ext" />
+        <button class="btn-enqueue" onclick="enqueueCustom()">+ Enqueue</button>
+      </div>
+    </div>
+
+    <!-- PRINTER PANEL -->
+    <div class="card">
+      <div class="card-label">Printer — dequeue()</div>
+      <div class="status-box" id="status-box">● Siap mencetak</div>
+      <button class="btn-dequeue" id="btn-dequeue" onclick="dequeue()" disabled>▶ Cetak Berikutnya (dequeue)</button>
+      <button class="btn-auto" onclick="printAll()">⚡ Cetak Semua Otomatis</button>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- QUEUE -->
+    <div class="card">
+      <div class="card-label">Antrian Saat Ini</div>
+      <div class="queue-list" id="queue-list">
+        <div class="queue-empty">// antrian kosong</div>
+      </div>
+    </div>
+
+    <!-- LOG -->
+    <div class="card">
+      <div class="card-label">Output Log</div>
+      <div class="log-area" id="log-area">
+        <div class="log-line log-comment"># Output akan muncul di sini</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SOURCE CODE -->
+  <div class="code-card">
+    <div class="code-header">
+      <div class="dot d1"></div><div class="dot d2"></div><div class="dot d3"></div>
+      <span class="code-lang">Python — referensi kode</span>
+    </div>
+    <pre><span class="cm"># Inisialisasi antrian printer</span>
+<span class="va">printer_queue</span> = <span class="fn">Queue</span>()
+
+<span class="cm"># User mengirim dokumen</span>
+<span class="va">printer_queue</span>.<span class="fn">enqueue</span>(<span class="st">"laporan.pdf"</span>)
+<span class="va">printer_queue</span>.<span class="fn">enqueue</span>(<span class="st">"tugas.docx"</span>)
+<span class="va">printer_queue</span>.<span class="fn">enqueue</span>(<span class="st">"foto.jpg"</span>)
+
+<span class="cm"># Printer memproses (FIFO)</span>
+<span class="kw">while not</span> <span class="va">printer_queue</span>.<span class="fn">isEmpty</span>():
+  <span class="va">doc</span> = <span class="va">printer_queue</span>.<span class="fn">dequeue</span>()
+  <span class="fn">print</span>(<span class="st">f"Mencetak: {doc}"</span>)
+
+<span class="cm"># Output:</span>
+<span class="cm"># Mencetak: laporan.pdf</span>
+<span class="cm"># Mencetak: tugas.docx</span>
+<span class="cm"># Mencetak: foto.jpg</span></pre>
+  </div>
+
+</div>
+
+<script>
+  const queue = [];
+  let totalEnq = 0, totalDeq = 0;
+  let logStarted = false;
+
+  function getIcon(name) {
+    const ext = name.split('.').pop().toLowerCase();
+    if (ext === 'pdf') return '📄';
+    if (['doc','docx'].includes(ext)) return '📝';
+    if (['jpg','jpeg','png','gif','webp'].includes(ext)) return '🖼';
+    if (['ppt','pptx'].includes(ext)) return '📊';
+    if (['xls','xlsx','csv'].includes(ext)) return '📋';
+    return '📁';
+  }
+
+  function updateStats() {
+    document.getElementById('s-enq').textContent = totalEnq;
+    document.getElementById('s-deq').textContent = totalDeq;
+    document.getElementById('s-q').textContent = queue.length;
+    document.getElementById('btn-dequeue').disabled = queue.length === 0;
+  }
+
+  function renderQueue() {
+    const el = document.getElementById('queue-list');
+    if (queue.length === 0) {
+      el.innerHTML = '<div class="queue-empty">// antrian kosong</div>';
+      return;
+    }
+    el.innerHTML = queue.map((name, i) => `
+      <div class="queue-item ${i === 0 ? 'first' : ''}">
+        <span class="queue-num">${i + 1}</span>
+        <span class="queue-icon">${getIcon(name)}</span>
+        <span class="queue-name">${name}</span>
+        ${i === 0 ? '<span class="queue-badge">berikutnya</span>' : ''}
+      </div>
+    `).join('');
+  }
+
+  function addLog(text, cls) {
+    const el = document.getElementById('log-area');
+    if (!logStarted) {
+      el.innerHTML = '';
+      logStarted = true;
+    }
+    const div = document.createElement('div');
+    div.className = 'log-line ' + cls;
+    div.textContent = text;
+    el.appendChild(div);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function setStatus(msg, type) {
+    const b = document.getElementById('status-box');
+    b.textContent = '● ' + msg;
+    b.className = 'status-box' + (type ? ' ' + type : '');
+  }
+
+  function enqueue(name) {
+    queue.push(name);
+    totalEnq++;
+    addLog('printer_queue.enqueue("' + name + '")', 'log-enqueue');
+    setStatus('Siap mencetak');
+    renderQueue();
+    updateStats();
+  }
+
+  function enqueueCustom() {
+    const inp = document.getElementById('custom-doc');
+    const val = inp.value.trim();
+    if (!val) return;
+    enqueue(val);
+    inp.value = '';
+    inp.focus();
+  }
+
+  function dequeue() {
+    if (queue.length === 0) return;
+    const doc = queue.shift();
+    totalDeq++;
+    addLog('# Mencetak: ' + doc, 'log-print');
+    setStatus('Mencetak: ' + doc, 'printing');
+    renderQueue();
+    updateStats();
+    setTimeout(() => {
+      if (queue.length > 0) setStatus('Siap mencetak');
+      else setStatus('Selesai — antrian kosong', 'done');
+    }, 900);
+  }
+
+  function printAll() {
+    if (queue.length === 0) return;
+    const count = queue.length;
+    let delay = 0;
+    for (let i = 0; i < count; i++) {
+      setTimeout(dequeue, delay);
+      delay += 700;
+    }
+  }
+
+  document.getElementById('custom-doc').addEventListener('keydown', e => {
+    if (e.key === 'Enter') enqueueCustom();
+  });
+
+  renderQueue();
+  updateStats();
+</script>
+</body>
+</html>

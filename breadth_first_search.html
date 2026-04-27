@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kasus 4: BFS — Breadth-First Search</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #080c14;
+      --surface: #0f1623;
+      --surface2: #161e30;
+      --border: #1e2a42;
+      --accent: #6366f1;
+      --accent2: #818cf8;
+      --visited: #22c55e;
+      --queue-c: #f59e0b;
+      --current: #ec4899;
+      --edge: #1e2a42;
+      --edge-active: #6366f1;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --code-bg: #060a12;
+    }
+    body { font-family:'Sora',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:2rem 1rem; }
+    .page { max-width:1000px; margin:0 auto; animation:fadeUp 0.4s ease; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes popIn  { from{opacity:0;transform:scale(0.88)} to{opacity:1;transform:scale(1)} }
+
+    /* HEADER */
+    .header { margin-bottom:1.8rem; padding-left:1.1rem; position:relative; }
+    .header::before { content:''; position:absolute; left:0; top:0; width:4px; height:100%; background:linear-gradient(180deg,var(--accent),var(--accent2)); border-radius:2px; }
+    .header-tag { font-family:'JetBrains Mono',monospace; font-size:0.67rem; color:var(--accent2); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.4rem; }
+    .header h1 { font-size:1.85rem; font-weight:700; }
+    .header p  { margin-top:0.35rem; color:var(--muted); font-size:0.85rem; }
+
+    /* LEGEND */
+    .legend { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:1.2rem; }
+    .leg { display:flex; align-items:center; gap:6px; padding:5px 12px; border-radius:20px; font-size:0.71rem; font-weight:600; border:1px solid; }
+    .leg-curr { background:rgba(236,72,153,0.12); border-color:var(--current); color:var(--current); }
+    .leg-queue { background:rgba(245,158,11,0.12); border-color:var(--queue-c); color:var(--queue-c); }
+    .leg-vis   { background:rgba(34,197,94,0.12); border-color:var(--visited); color:var(--visited); }
+    .leg-unvis { background:rgba(100,116,139,0.12); border-color:var(--muted); color:var(--muted); }
+
+    /* MAIN LAYOUT */
+    .main-grid { display:grid; grid-template-columns:1fr 340px; gap:1.2rem; margin-bottom:1.2rem; }
+    @media(max-width:720px){ .main-grid { grid-template-columns:1fr; } }
+
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.2rem; }
+    .card-label { font-family:'JetBrains Mono',monospace; font-size:0.62rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:0.9rem; display:flex; align-items:center; gap:6px; }
+    .card-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* GRAPH CANVAS */
+    #graph-canvas { width:100%; border-radius:8px; background:var(--code-bg); border:1px solid var(--border); display:block; cursor:pointer; }
+
+    /* RIGHT PANEL */
+    .right-panel { display:flex; flex-direction:column; gap:1rem; }
+
+    /* GRAPH SELECTOR */
+    .graph-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+    .gtab { font-family:'JetBrains Mono',monospace; font-size:0.68rem; padding:5px 10px; border-radius:6px; cursor:pointer; border:1px solid var(--border); background:var(--surface2); color:var(--muted); transition:all 0.15s; }
+    .gtab.active, .gtab:hover { border-color:var(--accent); color:var(--accent2); background:rgba(99,102,241,0.1); }
+
+    /* START NODE */
+    .start-select { display:flex; flex-wrap:wrap; gap:5px; }
+    .snode { font-family:'JetBrains Mono',monospace; font-size:0.72rem; padding:5px 10px; border-radius:6px; cursor:pointer; border:1px solid var(--border); background:var(--surface2); color:var(--muted); transition:all 0.15s; }
+    .snode.active { border-color:var(--current); color:var(--current); background:rgba(236,72,153,0.1); }
+
+    /* QUEUE DISPLAY */
+    .queue-visual { display:flex; gap:5px; flex-wrap:wrap; min-height:36px; align-items:center; }
+    .qnode {
+      padding:4px 10px; border-radius:5px; font-family:'JetBrains Mono',monospace; font-size:0.75rem; font-weight:600;
+      border:1px solid var(--queue-c); background:rgba(245,158,11,0.12); color:var(--queue-c);
+      animation:popIn 0.2s ease;
+    }
+    .q-empty { font-size:0.72rem; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+
+    /* VISITED */
+    .visited-visual { display:flex; gap:5px; flex-wrap:wrap; min-height:30px; align-items:center; }
+    .vnode { padding:3px 9px; border-radius:5px; font-family:'JetBrains Mono',monospace; font-size:0.72rem; background:rgba(34,197,94,0.12); border:1px solid var(--visited); color:var(--visited); animation:popIn 0.2s ease; }
+
+    /* CONTROLS */
+    .ctrl-row { display:flex; gap:8px; flex-wrap:wrap; }
+    button { font-family:'Sora',sans-serif; cursor:pointer; border:none; border-radius:7px; transition:all 0.15s; }
+    .btn-step { padding:9px 16px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; }
+    .btn-step:hover { opacity:0.85; transform:translateY(-1px); }
+    .btn-step:disabled { opacity:0.3; cursor:not-allowed; transform:none; }
+    .btn-auto { padding:9px 14px; font-size:0.78rem; font-weight:600; background:var(--surface2); color:var(--text); border:1px solid var(--border); }
+    .btn-auto:hover { border-color:var(--accent2); }
+    .btn-reset2 { padding:9px 12px; font-size:0.78rem; background:transparent; color:var(--muted); border:1px solid var(--border); }
+    .btn-reset2:hover { color:#ef4444; border-color:#ef4444; }
+
+    /* LOG */
+    .log-area { background:var(--code-bg); border:1px solid var(--border); border-radius:8px; padding:0.9rem; min-height:140px; max-height:210px; overflow-y:auto; font-family:'JetBrains Mono',monospace; font-size:0.72rem; display:flex; flex-direction:column; gap:3px; }
+    .l-cm   { color:#374151; }
+    .l-node { color:var(--accent2); }
+    .l-enq  { color:var(--queue-c); }
+    .l-vis  { color:var(--visited); }
+    .l-done { color:var(--visited); font-weight:600; }
+    .l-step { color:var(--current); }
+
+    /* STATS */
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:1.2rem; }
+    .stat { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:0.75rem; text-align:center; }
+    .stat-val { font-size:1.4rem; font-weight:700; font-family:'JetBrains Mono',monospace; }
+    .stat-lbl { font-size:0.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-top:3px; }
+
+    /* BFS TRACE TABLE */
+    .trace-table { width:100%; border-collapse:collapse; font-family:'JetBrains Mono',monospace; font-size:0.72rem; }
+    .trace-table th { padding:6px 10px; text-align:left; background:var(--surface2); color:var(--muted); font-size:0.63rem; text-transform:uppercase; letter-spacing:0.07em; border-bottom:1px solid var(--border); }
+    .trace-table td { padding:6px 10px; border-bottom:1px solid var(--border)55; }
+    .trace-table tr:last-child td { border-bottom:none; }
+    .trace-table tr { animation:popIn 0.2s ease; }
+    .tr-current td { background:rgba(236,72,153,0.06); }
+
+    /* INFO BOX */
+    .info-box { background:rgba(99,102,241,0.07); border:1px solid rgba(99,102,241,0.2); border-radius:8px; padding:0.85rem 1rem; font-size:0.78rem; color:#a5b4fc; line-height:1.65; margin-bottom:1.2rem; }
+    .info-box strong { color:#c7d2fe; }
+
+    /* CODE */
+    .code-card { background:var(--code-bg); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+    .code-header { background:var(--surface); border-bottom:1px solid var(--border); padding:7px 14px; display:flex; align-items:center; gap:6px; }
+    .dot { width:10px; height:10px; border-radius:50%; }
+    .d1{background:#ef4444;} .d2{background:#f59e0b;} .d3{background:#22c55e;}
+    .code-lang { margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:0.62rem; color:var(--muted); }
+    pre { padding:1rem 1.25rem; font-family:'JetBrains Mono',monospace; font-size:0.77rem; line-height:1.85; overflow-x:auto; color:#cdd6f4; }
+    .kw{color:#cba6f7;} .fn{color:#89b4fa;} .st{color:#a6e3a1;} .cm{color:#6c7086;} .va{color:#cdd6f4;} .nu{color:#fab387;}
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-tag">Struktur Data — Queue / BFS</div>
+    <h1>Kasus 4: BFS — Breadth-First Search</h1>
+    <p>Pencarian jalur terpendek pada graf menggunakan queue</p>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="leg leg-curr">● Sedang diproses</div>
+    <div class="leg leg-queue">● Dalam queue</div>
+    <div class="leg leg-vis">● Sudah dikunjungi</div>
+    <div class="leg leg-unvis">● Belum dikunjungi</div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat"><div class="stat-val" style="color:var(--accent2)" id="s-step">0</div><div class="stat-lbl">Langkah</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--visited)"  id="s-vis">0</div><div class="stat-lbl">Dikunjungi</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--queue-c)"  id="s-q">0</div><div class="stat-lbl">Dalam Queue</div></div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- GRAPH PANEL -->
+    <div class="card">
+      <div class="card-label">Visualisasi Graf</div>
+
+      <div style="margin-bottom:10px;">
+        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:5px;">Pilih graf:</div>
+        <div class="graph-tabs">
+          <div class="gtab active" onclick="loadGraph(0,this)">Graf Sederhana</div>
+          <div class="gtab" onclick="loadGraph(1,this)">Graf Pohon</div>
+          <div class="gtab" onclick="loadGraph(2,this)">Graf Kompleks</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:10px;">
+        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:5px;">Node awal (start):</div>
+        <div class="start-select" id="start-select"></div>
+      </div>
+
+      <canvas id="graph-canvas" height="320"></canvas>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+
+      <!-- CONTROLS -->
+      <div class="card">
+        <div class="card-label">Kontrol BFS</div>
+        <div class="ctrl-row" style="margin-bottom:10px;">
+          <button class="btn-step" id="btn-step" onclick="bfsStep()">▶ Step</button>
+          <button class="btn-auto" onclick="bfsAuto()">⚡ Auto</button>
+          <button class="btn-reset2" onclick="bfsReset()">↺ Reset</button>
+        </div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:4px;">Status:</div>
+        <div id="status-msg" style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--accent2);padding:7px 10px;background:var(--code-bg);border-radius:6px;border-left:3px solid var(--accent);">Tekan Step untuk mulai BFS</div>
+      </div>
+
+      <!-- QUEUE -->
+      <div class="card">
+        <div class="card-label">Queue (FIFO)</div>
+        <div class="queue-visual" id="queue-visual"><span class="q-empty">// kosong</span></div>
+      </div>
+
+      <!-- VISITED -->
+      <div class="card">
+        <div class="card-label">Visited Set</div>
+        <div class="visited-visual" id="visited-visual"><span class="q-empty">// belum ada</span></div>
+      </div>
+
+      <!-- LOG -->
+      <div class="card">
+        <div class="card-label">Output Log</div>
+        <div class="log-area" id="log-area">
+          <div class="l-cm"># Tekan Step atau Auto untuk menjalankan BFS</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TRACE TABLE -->
+  <div class="card" style="margin-bottom:1.2rem;">
+    <div class="card-label">BFS Trace — Level demi Level</div>
+    <div style="overflow-x:auto;">
+      <table class="trace-table">
+        <thead><tr><th>Langkah</th><th>Node</th><th>Tetangga</th><th>Enqueue</th><th>Queue setelah</th></tr></thead>
+        <tbody id="trace-body"><tr><td colspan="5" style="color:var(--muted);text-align:center;padding:1rem;">— Belum ada trace —</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- INFO -->
+  <div class="info-box">
+    <strong>BFS menjelajahi graf LEVEL demi LEVEL</strong> — persis karena sifat FIFO queue.
+    Node yang ditemukan duluan (level dekat) diproses duluan sebelum node yang lebih jauh.
+    Ini menjamin jalur terpendek pada graf tanpa bobot.
+  </div>
+
+  <!-- CODE -->
+  <div class="code-card">
+    <div class="code-header">
+      <div class="dot d1"></div><div class="dot d2"></div><div class="dot d3"></div>
+      <span class="code-lang">bfs.py — referensi kode</span>
+    </div>
+    <pre><span class="kw">def</span> <span class="fn">bfs</span>(<span class="va">graph</span>, <span class="va">start</span>):
+  <span class="va">visited</span> = <span class="fn">set</span>()
+  <span class="va">queue</span>   = <span class="fn">Queue</span>()
+  <span class="va">queue</span>.<span class="fn">enqueue</span>(<span class="va">start</span>)
+  <span class="va">visited</span>.<span class="fn">add</span>(<span class="va">start</span>)
+
+  <span class="kw">while not</span> <span class="va">queue</span>.<span class="fn">isEmpty</span>():
+    <span class="va">node</span> = <span class="va">queue</span>.<span class="fn">dequeue</span>()
+    <span class="fn">print</span>(<span class="va">node</span>)  <span class="cm"># proses</span>
+
+    <span class="kw">for</span> <span class="va">neighbor</span> <span class="kw">in</span> <span class="va">graph</span>[<span class="va">node</span>]:
+      <span class="kw">if</span> <span class="va">neighbor</span> <span class="kw">not in</span> <span class="va">visited</span>:
+        <span class="va">visited</span>.<span class="fn">add</span>(<span class="va">neighbor</span>)
+        <span class="va">queue</span>.<span class="fn">enqueue</span>(<span class="va">neighbor</span>)</pre>
+  </div>
+
+</div>
+
+<script>
+// ── GRAPH DEFINITIONS ──
+const GRAPHS = [
+  {
+    name: 'Graf Sederhana',
+    nodes: {
+      A: {x:0.5, y:0.12},
+      B: {x:0.2, y:0.38},
+      C: {x:0.8, y:0.38},
+      D: {x:0.1, y:0.72},
+      E: {x:0.42,y:0.72},
+      F: {x:0.68,y:0.72},
+      G: {x:0.9, y:0.72},
+    },
+    edges: [['A','B'],['A','C'],['B','D'],['B','E'],['C','F'],['C','G']],
+    adj: {A:['B','C'],B:['A','D','E'],C:['A','F','G'],D:['B'],E:['B'],F:['C'],G:['C']}
+  },
+  {
+    name: 'Graf Pohon',
+    nodes: {
+      '1': {x:0.5,  y:0.1 },
+      '2': {x:0.25, y:0.35},
+      '3': {x:0.75, y:0.35},
+      '4': {x:0.12, y:0.62},
+      '5': {x:0.38, y:0.62},
+      '6': {x:0.62, y:0.62},
+      '7': {x:0.88, y:0.62},
+      '8': {x:0.06, y:0.88},
+      '9': {x:0.25, y:0.88},
+    },
+    edges: [['1','2'],['1','3'],['2','4'],['2','5'],['3','6'],['3','7'],['4','8'],['4','9']],
+    adj: {'1':['2','3'],'2':['1','4','5'],'3':['1','6','7'],'4':['2','8','9'],'5':['2'],'6':['3'],'7':['3'],'8':['4'],'9':['4']}
+  },
+  {
+    name: 'Graf Kompleks',
+    nodes: {
+      S: {x:0.1, y:0.5 },
+      A: {x:0.3, y:0.18},
+      B: {x:0.3, y:0.78},
+      C: {x:0.55,y:0.18},
+      D: {x:0.55,y:0.5 },
+      E: {x:0.55,y:0.82},
+      F: {x:0.8, y:0.32},
+      G: {x:0.8, y:0.7 },
+      T: {x:0.95,y:0.5 },
+    },
+    edges: [['S','A'],['S','B'],['A','C'],['A','D'],['B','D'],['B','E'],['C','F'],['D','F'],['D','G'],['E','G'],['F','T'],['G','T']],
+    adj: {S:['A','B'],A:['S','C','D'],B:['S','D','E'],C:['A','F'],D:['A','B','F','G'],E:['B','G'],F:['C','D','T'],G:['D','E','T'],T:['F','G']}
+  }
+];
+
+// ── STATE ──
+let graph = GRAPHS[0];
+let startNode = Object.keys(GRAPHS[0].nodes)[0];
+let visited = new Set();
+let queue   = [];
+let stepCount = 0;
+let bfsDone = false;
+let logReady = false;
+let activeEdges = new Set(); // "A-B"
+let currentNode = null;
+let traceRows = [];
+
+// ── INIT ──
+loadGraph(0, document.querySelector('.gtab'));
+
+function loadGraph(idx, el) {
+  document.querySelectorAll('.gtab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  graph = GRAPHS[idx];
+  startNode = Object.keys(graph.nodes)[0];
+  renderStartSelect();
+  bfsReset();
+}
+
+function renderStartSelect() {
+  const el = document.getElementById('start-select');
+  el.innerHTML = '';
+  Object.keys(graph.nodes).forEach((n,i) => {
+    const d = document.createElement('div');
+    d.className = 'snode' + (n === startNode ? ' active' : '');
+    d.textContent = n;
+    d.onclick = () => {
+      startNode = n;
+      document.querySelectorAll('.snode').forEach(s => s.classList.remove('active'));
+      d.classList.add('active');
+      bfsReset();
+    };
+    el.appendChild(d);
+  });
+}
+
+function bfsReset() {
+  visited = new Set();
+  queue = [];
+  stepCount = 0;
+  bfsDone = false;
+  activeEdges = new Set();
+  currentNode = null;
+  traceRows = [];
+  logReady = false;
+  document.getElementById('btn-step').disabled = false;
+  document.getElementById('log-area').innerHTML = '<div class="l-cm"># Tekan Step atau Auto untuk menjalankan BFS</div>';
+  document.getElementById('status-msg').textContent = 'Tekan Step untuk mulai BFS';
+  document.getElementById('status-msg').style.borderColor = 'var(--accent)';
+  document.getElementById('status-msg').style.color = 'var(--accent2)';
+  document.getElementById('trace-body').innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:1rem;">— Belum ada trace —</td></tr>';
+  renderQueue();
+  renderVisited();
+  updateStats();
+  drawGraph();
+}
+
+function bfsStep() {
+  if (bfsDone) return;
+
+  if (!logReady) {
+    document.getElementById('log-area').innerHTML = '';
+    logReady = true;
+    // Init BFS
+    queue.push(startNode);
+    visited.add(startNode);
+    addLog(`# BFS dimulai dari node: ${startNode}`, 'l-cm');
+    addLog(`queue.enqueue("${startNode}")  → visited.add("${startNode}")`, 'l-enq');
+    updateStats();
+    renderQueue();
+    renderVisited();
+    drawGraph();
+    setStatus(`Inisialisasi: enqueue(${startNode})`, 'var(--queue-c)');
+    return;
+  }
+
+  if (queue.length === 0) {
+    bfsDone = true;
+    addLog('# BFS selesai — semua node terjangkau dikunjungi!', 'l-done');
+    setStatus('BFS selesai!', 'var(--visited)');
+    document.getElementById('btn-step').disabled = true;
+    drawGraph();
+    return;
+  }
+
+  stepCount++;
+  const node = queue.shift();
+  currentNode = node;
+
+  const neighbors = graph.adj[node] || [];
+  const enqueued = [];
+
+  neighbors.forEach(nb => {
+    if (!visited.has(nb)) {
+      visited.add(nb);
+      queue.push(nb);
+      enqueued.push(nb);
+      activeEdges.add(edgeKey(node, nb));
+    }
+  });
+
+  // Log
+  addLog(``, 'l-cm');
+  addLog(`# Langkah ${stepCount}: dequeue → ${node}`, 'l-step');
+  addLog(`print("${node}")  ← diproses`, 'l-node');
+  neighbors.forEach(nb => {
+    if (enqueued.includes(nb)) addLog(`  enqueue("${nb}")  visited.add("${nb}")`, 'l-enq');
+    else addLog(`  ${nb} sudah dikunjungi — lewati`, 'l-cm');
+  });
+
+  // Trace row
+  addTraceRow(stepCount, node, neighbors, enqueued, [...queue]);
+
+  setStatus(`Proses node: ${node} | Enqueue: [${enqueued.join(', ')||'—'}]`, 'var(--current)');
+
+  renderQueue();
+  renderVisited();
+  updateStats();
+  drawGraph();
+
+  if (queue.length === 0) {
+    setTimeout(() => {
+      bfsDone = true;
+      addLog('', 'l-cm');
+      addLog('# BFS selesai!', 'l-done');
+      setStatus('BFS selesai — semua node dikunjungi!', 'var(--visited)');
+      document.getElementById('btn-step').disabled = true;
+      drawGraph();
+    }, 100);
+  }
+}
+
+function bfsAuto() {
+  if (bfsDone) return;
+  const total = Object.keys(graph.nodes).length + 2;
+  let i = 0;
+  const iv = setInterval(() => {
+    if (bfsDone || i >= total * 2) { clearInterval(iv); return; }
+    bfsStep();
+    i++;
+  }, 550);
+}
+
+function setStatus(msg, color) {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.style.color = color;
+  el.style.borderColor = color;
+}
+
+// ── RENDER HELPERS ──
+function renderQueue() {
+  const el = document.getElementById('queue-visual');
+  if (queue.length === 0) { el.innerHTML = '<span class="q-empty">// kosong</span>'; return; }
+  el.innerHTML = queue.map(n => `<div class="qnode">${n}</div>`).join('');
+}
+
+function renderVisited() {
+  const el = document.getElementById('visited-visual');
+  if (visited.size === 0) { el.innerHTML = '<span class="q-empty">// belum ada</span>'; return; }
+  el.innerHTML = [...visited].map(n => `<div class="vnode">${n}</div>`).join('');
+}
+
+function updateStats() {
+  document.getElementById('s-step').textContent = stepCount;
+  document.getElementById('s-vis').textContent  = visited.size;
+  document.getElementById('s-q').textContent    = queue.length;
+}
+
+function addLog(text, cls) {
+  const el = document.getElementById('log-area');
+  const div = document.createElement('div');
+  div.className = cls;
+  div.textContent = text;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function addTraceRow(step, node, neighbors, enqueued, qAfter) {
+  const tbody = document.getElementById('trace-body');
+  if (step === 1) tbody.innerHTML = '';
+  const tr = document.createElement('tr');
+  tr.className = 'tr-current';
+  tr.innerHTML = `
+    <td style="color:var(--accent2)">${step}</td>
+    <td style="color:var(--current);font-weight:700">${node}</td>
+    <td style="color:var(--muted)">[${neighbors.join(', ')||'—'}]</td>
+    <td style="color:var(--queue-c)">[${enqueued.join(', ')||'—'}]</td>
+    <td style="color:var(--muted)">[${qAfter.join(', ')||'kosong'}]</td>
+  `;
+  // un-highlight old rows
+  tbody.querySelectorAll('tr').forEach(r => r.classList.remove('tr-current'));
+  tbody.appendChild(tr);
+  tbody.scrollTop = tbody.scrollHeight;
+}
+
+function edgeKey(a, b) {
+  return [a,b].sort().join('-');
+}
+
+// ── DRAW GRAPH ──
+function drawGraph() {
+  const canvas = document.getElementById('graph-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth;
+  const H = 320;
+  canvas.width = W;
+  canvas.height = H;
+
+  ctx.clearRect(0, 0, W, H);
+
+  const nodePos = {};
+  Object.entries(graph.nodes).forEach(([name, pos]) => {
+    nodePos[name] = { x: pos.x * W, y: pos.y * H };
+  });
+
+  // Draw edges
+  graph.edges.forEach(([a, b]) => {
+    const pa = nodePos[a], pb = nodePos[b];
+    const key = edgeKey(a, b);
+    const isActive = activeEdges.has(key);
+    ctx.beginPath();
+    ctx.moveTo(pa.x, pa.y);
+    ctx.lineTo(pb.x, pb.y);
+    ctx.strokeStyle = isActive ? '#6366f155' : '#1e2a42';
+    ctx.lineWidth = isActive ? 2.5 : 1.5;
+    ctx.stroke();
+  });
+
+  // Draw nodes
+  const R = Math.max(18, Math.min(24, W / 20));
+  Object.entries(nodePos).forEach(([name, pos]) => {
+    const isCurrent = name === currentNode && !bfsDone;
+    const isVisited = visited.has(name);
+    const inQueue  = queue.includes(name);
+
+    let fill, stroke, textColor;
+    if (isCurrent) {
+      fill = '#ec489933'; stroke = '#ec4899'; textColor = '#ec4899';
+    } else if (isVisited) {
+      fill = '#22c55e22'; stroke = '#22c55e'; textColor = '#22c55e';
+    } else if (inQueue) {
+      fill = '#f59e0b22'; stroke = '#f59e0b'; textColor = '#f59e0b';
+    } else {
+      fill = '#161e30'; stroke = '#1e2a42'; textColor = '#64748b';
+    }
+
+    // Glow for current
+    if (isCurrent) {
+      ctx.shadowColor = '#ec4899';
+      ctx.shadowBlur = 14;
+    } else if (inQueue) {
+      ctx.shadowColor = '#f59e0b';
+      ctx.shadowBlur = 8;
+    } else {
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, R, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = isCurrent ? 2.5 : 1.5;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = textColor;
+    ctx.font = `600 ${Math.round(R * 0.7)}px Sora, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name, pos.x, pos.y);
+
+    // Level badge (distance)
+    if (isVisited && !isCurrent) {
+      ctx.fillStyle = '#22c55e55';
+      ctx.font = `400 9px JetBrains Mono`;
+      ctx.fillText('✓', pos.x + R * 0.55, pos.y - R * 0.55);
+    }
+  });
+}
+
+window.addEventListener('resize', drawGraph);
+</script>
+</body>
+</html>

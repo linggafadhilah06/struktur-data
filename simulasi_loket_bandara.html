@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kasus 5: Simulasi Loket Tiket Bandara</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --accent: #f59e0b;
+    --accent2: #3b82f6;
+    --accent3: #10b981;
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --danger: #ef4444;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Sora', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 2rem;
+    background-image:
+      radial-gradient(ellipse at 10% 20%, rgba(59,130,246,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 90% 80%, rgba(245,158,11,0.06) 0%, transparent 50%);
+  }
+
+  h1 {
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #fff;
+    margin-bottom: 0.25rem;
+  }
+
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+    font-family: var(--mono);
+  }
+
+  .accent { color: var(--accent); }
+  .accent2 { color: var(--accent2); }
+  .accent3 { color: var(--accent3); }
+
+  /* GRID LAYOUT */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  /* CARD */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+  }
+  .card-title {
+    font-size: 0.75rem;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .card-title::before {
+    content: '';
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  /* PARAMS */
+  .params-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+  .param-item label {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-bottom: 0.3rem;
+    font-family: var(--mono);
+  }
+  .param-item input, .param-item select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 0.5rem 0.75rem;
+    font-family: var(--mono);
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .param-item input:focus, .param-item select:focus {
+    border-color: var(--accent2);
+  }
+
+  /* BUTTONS */
+  .btn-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  button {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    padding: 0.6rem 1.4rem;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  #btnRun {
+    background: var(--accent);
+    color: #0a0e1a;
+  }
+  #btnRun:hover { background: #fbbf24; transform: translateY(-1px); }
+  #btnReset {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  #btnReset:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* STATS */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 700px) { .stats-row { grid-template-columns: 1fr 1fr; } }
+  .stat-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+  }
+  .stat-val {
+    font-family: var(--mono);
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+  .stat-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* VISUALIZATION */
+  .viz-section {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 800px) { .viz-section { grid-template-columns: 1fr; } }
+
+  /* QUEUE VIZ */
+  .queue-display {
+    min-height: 120px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-content: flex-start;
+    padding: 0.75rem;
+    background: var(--surface2);
+    border-radius: 8px;
+  }
+  .passenger-dot {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--accent2);
+    animation: popIn 0.2s ease;
+    flex-shrink: 0;
+  }
+  @keyframes popIn {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  /* AGENTS */
+  .agents-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .agent-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border);
+    transition: border-color 0.3s;
+  }
+  .agent-bar.busy { border-color: var(--accent); }
+  .agent-icon {
+    font-size: 1.1rem;
+  }
+  .agent-name {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    width: 60px;
+    flex-shrink: 0;
+  }
+  .agent-progress-track {
+    flex: 1;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .agent-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+  .agent-status {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    width: 45px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* LOG */
+  .log-box {
+    background: #060a10;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    height: 220px;
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    line-height: 1.7;
+  }
+  .log-box::-webkit-scrollbar { width: 4px; }
+  .log-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .log-entry { display: flex; gap: 0.5rem; }
+  .log-time { color: var(--text-muted); flex-shrink: 0; }
+  .log-r1 { color: var(--accent2); }
+  .log-r2 { color: var(--accent); }
+  .log-r3 { color: var(--accent3); }
+
+  /* CHART */
+  canvas#waitChart {
+    background: var(--surface2);
+    border-radius: 8px;
+    width: 100% !important;
+    height: 160px !important;
+  }
+
+  /* RULES REMINDER */
+  .rules-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.78rem;
+  }
+  .rule { display: flex; gap: 0.5rem; align-items: flex-start; }
+  .rule-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: var(--accent);
+  }
+
+  /* INSIGHT */
+  .insight-box {
+    background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(59,130,246,0.05));
+    border: 1px solid rgba(245,158,11,0.25);
+    border-radius: 10px;
+    padding: 0.9rem 1.25rem;
+    font-size: 0.82rem;
+    color: #fcd34d;
+    margin-bottom: 1.5rem;
+    font-family: var(--mono);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  /* progress bar top */
+  #simProgress {
+    height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.1s;
+    margin-bottom: 1.5rem;
+  }
+
+  /* TICK COUNTER */
+  .tick-display {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-align: right;
+    margin-top: -1rem;
+    margin-bottom: 1rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>Kasus 5: Simulasi <span class="accent">Loket Tiket</span> Bandara</h1>
+<p class="subtitle">// discrete_event_simulation · rata-rata waktu tunggu antrian penumpang</p>
+
+<div id="simProgress"></div>
+
+<!-- PARAMS -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">Komponen &amp; Parameter</div>
+    <div class="params-grid">
+      <div class="param-item">
+        <label>Durasi Simulasi (menit)</label>
+        <input type="number" id="pDurasi" value="120" min="10" max="1440">
+      </div>
+      <div class="param-item">
+        <label>Jumlah Agen Loket</label>
+        <input type="number" id="pAgen" value="2" min="1" max="10">
+      </div>
+      <div class="param-item">
+        <label>Waktu Layanan (menit)</label>
+        <input type="number" id="pLayanan" value="5" min="1" max="60">
+      </div>
+      <div class="param-item">
+        <label>Interval Kedatangan (menit)</label>
+        <input type="number" id="pInterval" value="3" min="1" max="30">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Aturan Simulasi</div>
+    <div class="rules-box" style="border:none;padding:0;background:transparent;">
+      <div class="rule"><span class="rule-badge">R1</span> <span>Jika penumpang tiba → <strong style="color:var(--accent2)">enqueue</strong></span></div>
+      <div class="rule"><span class="rule-badge">R2</span> <span>Jika agen free &amp; antrian tidak kosong → <strong style="color:var(--accent)">dequeue</strong>, mulai layani</span></div>
+      <div class="rule"><span class="rule-badge">R3</span> <span>Jika transaksi selesai → penumpang keluar, <strong style="color:var(--accent3)">agen free</strong></span></div>
+      <div class="rule"><span class="rule-badge">AVG</span> <span>avg_wait = totalWait / numServed</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- BUTTONS -->
+<div class="btn-row">
+  <button id="btnRun" onclick="runSimulation()">▶ JALANKAN SIMULASI</button>
+  <button id="btnReset" onclick="resetAll()">✕ RESET</button>
+</div>
+
+<!-- STATS -->
+<div class="stats-row">
+  <div class="stat-box">
+    <div class="stat-val accent2" id="statServed">0</div>
+    <div class="stat-label">Dilayani</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-val accent" id="statAvgWait">0.00</div>
+    <div class="stat-label">Avg Wait (min)</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-val" id="statMaxQueue">0</div>
+    <div class="stat-label">Max Antrian</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-val accent3" id="statUtil">0%</div>
+    <div class="stat-label">Utilisasi Agen</div>
+  </div>
+</div>
+
+<!-- VISUALISASI LIVE -->
+<div class="viz-section">
+  <div class="card" style="padding:1rem;">
+    <div class="card-title">Antrian Sekarang</div>
+    <div class="queue-display" id="queueViz"></div>
+    <div style="font-size:0.7rem;color:var(--text-muted);font-family:var(--mono);margin-top:0.5rem;" id="queueCount">0 penumpang menunggu</div>
+  </div>
+
+  <div class="card" style="padding:1rem;">
+    <div class="card-title">Status Agen Loket</div>
+    <div class="agents-row" id="agentsViz"></div>
+    <div style="margin-top:0.75rem;">
+      <div class="card-title" style="margin-bottom:0.5rem;margin-top:0.5rem;">Grafik Rata-rata Tunggu</div>
+      <canvas id="waitChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- LOG -->
+<div class="card">
+  <div class="card-title">Log Kejadian</div>
+  <div class="log-box" id="logBox">
+    <div style="color:var(--text-muted);">// Klik "JALANKAN SIMULASI" untuk memulai...</div>
+  </div>
+</div>
+
+<div style="margin-top:1rem;" id="insightBox"></div>
+
+<script>
+// ──────────────────────────────────────────────
+// DATA STRUCTURES
+// ──────────────────────────────────────────────
+class Queue {
+  constructor() { this.items = []; }
+  enqueue(item) { this.items.push(item); }
+  dequeue() { return this.items.shift(); }
+  get size() { return this.items.length; }
+  get isEmpty() { return this.items.length === 0; }
+}
+
+// ──────────────────────────────────────────────
+// GLOBALS
+// ──────────────────────────────────────────────
+let simRunning = false;
+let simTimer = null;
+let logEntries = [];
+let chartData = [];
+let agentStates = []; // { busy, finishAt, totalBusyTime, passenger }
+
+// ──────────────────────────────────────────────
+// SIMULATION CORE
+// ──────────────────────────────────────────────
+function runSimulation() {
+  if (simRunning) return;
+  simRunning = true;
+  resetVisuals();
+
+  const durasi    = parseInt(document.getElementById('pDurasi').value) || 120;
+  const numAgen   = parseInt(document.getElementById('pAgen').value) || 2;
+  const layanan   = parseInt(document.getElementById('pLayanan').value) || 5;
+  const interval  = parseInt(document.getElementById('pInterval').value) || 3;
+
+  // init agents
+  agentStates = Array.from({ length: numAgen }, (_, i) => ({
+    id: i + 1,
+    busy: false,
+    finishAt: 0,
+    totalBusyTime: 0,
+    passengerId: null
+  }));
+
+  buildAgentUI(numAgen);
+
+  // Simulation state
+  const queue = new Queue();
+  let passengerIdCounter = 1;
+  let totalWait = 0;
+  let numServed = 0;
+  let maxQueue  = 0;
+  let nextPId   = passengerIdCounter;
+  let totalLogEntries = [];
+
+  chartData = [];
+  logEntries = [];
+
+  // Run full simulation (instant compute, animated display)
+  const events = []; // { time, type, data }
+
+  // Generate arrivals
+  for (let t = 0; t <= durasi; t++) {
+    const prob = 1 / interval;
+    if (Math.random() < prob) {
+      events.push({ time: t, type: 'arrival', passengerId: nextPId++ });
+    }
+  }
+  events.sort((a, b) => a.time - b.time);
+
+  // Discrete event simulation
+  const simLog = [];
+  const waitChartPoints = [];
+  const queueSnapshots = [];
+  let serviced = 0;
+  let totalWaitSim = 0;
+  const agents = Array.from({ length: numAgen }, (_, i) => ({
+    id: i+1, busy: false, finishAt: 0, totalBusy: 0
+  }));
+  const simQueue = new Queue();
+  let waitingPassengers = {}; // passengerId → arrivalTime
+
+  for (let t = 0; t <= durasi; t++) {
+    // R3: handle end of service
+    for (const ag of agents) {
+      if (ag.busy && ag.finishAt === t) {
+        ag.busy = false;
+        serviced++;
+        simLog.push({ time: t, type: 'r3', msg: `Agen ${ag.id} selesai melayani P#${ag.currentP}` });
+      }
+    }
+
+    // R1: arrivals at time t
+    const arrivals = events.filter(e => e.time === t);
+    for (const ev of arrivals) {
+      simQueue.enqueue({ id: ev.passengerId, arrivalTime: t });
+      waitingPassengers[ev.passengerId] = t;
+      simLog.push({ time: t, type: 'r1', msg: `P#${ev.passengerId} tiba → enqueue (antrian: ${simQueue.size})` });
+    }
+
+    // R2: assign free agents
+    for (const ag of agents) {
+      if (!ag.busy && !simQueue.isEmpty) {
+        const p = simQueue.dequeue();
+        const wait = t - p.arrivalTime;
+        totalWaitSim += wait;
+        ag.busy = true;
+        ag.finishAt = t + layanan;
+        ag.totalBusy += layanan;
+        ag.currentP = p.id;
+        simLog.push({ time: t, type: 'r2', msg: `Agen ${ag.id} ambil P#${p.id} (tunggu ${wait}min) → layani s/d t=${ag.finishAt}` });
+      }
+    }
+
+    if (simQueue.size > maxQueue) maxQueue = simQueue.size;
+
+    // snapshot every 5 mins
+    if (t % 5 === 0) {
+      const avgW = serviced > 0 ? (totalWaitSim / serviced).toFixed(2) : 0;
+      waitChartPoints.push({ t, avgW: parseFloat(avgW) });
+    }
+    queueSnapshots.push(simQueue.size);
+  }
+
+  const avgWait = serviced > 0 ? (totalWaitSim / serviced).toFixed(2) : 0;
+  const totalAgentTime = agents.reduce((s, a) => s + a.totalBusy, 0);
+  const utilPct = Math.round((totalAgentTime / (durasi * numAgen)) * 100);
+
+  // Update stats
+  document.getElementById('statServed').textContent  = serviced;
+  document.getElementById('statAvgWait').textContent = avgWait;
+  document.getElementById('statMaxQueue').textContent = maxQueue;
+  document.getElementById('statUtil').textContent    = utilPct + '%';
+
+  // Animate log (fast)
+  animateLog(simLog, durasi);
+
+  // Draw chart
+  drawChart(waitChartPoints);
+
+  // Animate queue dot display
+  animateQueueViz(queueSnapshots, durasi, numAgen, agents, simLog, layanan);
+
+  // Show insight
+  showInsight(numAgen, avgWait, serviced, maxQueue);
+
+  simRunning = false;
+}
+
+// ──────────────────────────────────────────────
+// LOG ANIMATION (show entries progressively)
+// ──────────────────────────────────────────────
+function animateLog(entries, durasi) {
+  const box = document.getElementById('logBox');
+  box.innerHTML = '';
+  const slice = entries.slice(0, 200); // cap at 200
+  let i = 0;
+  const interval = setInterval(() => {
+    if (i >= slice.length) { clearInterval(interval); return; }
+    const e = slice[i];
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    div.innerHTML = `<span class="log-time">t=${String(e.time).padStart(4,'0')}</span><span class="log-${e.type}">${e.msg}</span>`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+    i++;
+  }, 20);
+}
+
+// ──────────────────────────────────────────────
+// QUEUE DOT ANIMATION
+// ──────────────────────────────────────────────
+function animateQueueViz(snapshots, durasi, numAgen, agents, log, layanan) {
+  const qViz = document.getElementById('queueViz');
+  const qCount = document.getElementById('queueCount');
+  const prog = document.getElementById('simProgress');
+  let i = 0;
+  const step = Math.max(1, Math.floor(snapshots.length / 80));
+  const timer = setInterval(() => {
+    if (i >= snapshots.length) { clearInterval(timer); prog.style.width='100%'; return; }
+    const n = snapshots[i];
+    prog.style.width = ((i / snapshots.length) * 100) + '%';
+    qViz.innerHTML = '';
+    for (let d = 0; d < Math.min(n, 60); d++) {
+      const dot = document.createElement('div');
+      dot.className = 'passenger-dot';
+      qViz.appendChild(dot);
+    }
+    if (n > 60) {
+      const more = document.createElement('div');
+      more.style.cssText = 'font-size:0.65rem;color:var(--text-muted);font-family:var(--mono);align-self:center;';
+      more.textContent = `+${n-60}`;
+      qViz.appendChild(more);
+    }
+    qCount.textContent = `${n} penumpang menunggu`;
+    updateAgentBars(i, agents, numAgen, layanan, log);
+    i += step;
+  }, 60);
+}
+
+function updateAgentBars(tick, agents, numAgen, layanan, log) {
+  for (let a = 0; a < numAgen; a++) {
+    const bar = document.getElementById(`agent-bar-${a}`);
+    const fill = document.getElementById(`agent-fill-${a}`);
+    const status = document.getElementById(`agent-status-${a}`);
+    if (!bar) continue;
+    // Determine if busy at this tick
+    const relevant = log.filter(l => l.type === 'r2' && l.msg.includes(`Agen ${a+1} `));
+    const isBusy = relevant.some(l => {
+      const match = l.msg.match(/s\/d t=(\d+)/);
+      const startMatch = l.msg.match(/^.*?t=(\d+)/); // from time
+      if (match) {
+        const start = l.time;
+        const end = parseInt(match[1]);
+        return tick >= start && tick < end;
+      }
+      return false;
+    });
+    if (isBusy) {
+      bar.classList.add('busy');
+      const busyEvent = relevant.find(l => {
+        const match = l.msg.match(/s\/d t=(\d+)/);
+        return match && tick >= l.time && tick < parseInt(match[1]);
+      });
+      if (busyEvent) {
+        const match = busyEvent.msg.match(/s\/d t=(\d+)/);
+        const end = parseInt(match[1]);
+        const start = busyEvent.time;
+        const pct = ((tick - start) / (end - start)) * 100;
+        fill.style.width = Math.min(100, pct) + '%';
+      }
+      status.textContent = 'SIBUK';
+      status.style.color = 'var(--accent)';
+    } else {
+      bar.classList.remove('busy');
+      fill.style.width = '0%';
+      status.textContent = 'FREE';
+      status.style.color = 'var(--accent3)';
+    }
+  }
+}
+
+// ──────────────────────────────────────────────
+// BUILD AGENT UI
+// ──────────────────────────────────────────────
+function buildAgentUI(n) {
+  const container = document.getElementById('agentsViz');
+  container.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'agent-bar';
+    bar.id = `agent-bar-${i}`;
+    bar.innerHTML = `
+      <span class="agent-icon">🧑‍💼</span>
+      <span class="agent-name">Agen ${i+1}</span>
+      <div class="agent-progress-track">
+        <div class="agent-progress-fill" id="agent-fill-${i}" style="width:0%"></div>
+      </div>
+      <span class="agent-status accent3" id="agent-status-${i}">FREE</span>
+    `;
+    container.appendChild(bar);
+  }
+}
+
+// ──────────────────────────────────────────────
+// CHART (canvas)
+// ──────────────────────────────────────────────
+function drawChart(points) {
+  const canvas = document.getElementById('waitChart');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+  canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  ctx.clearRect(0, 0, W, H);
+
+  if (!points.length) return;
+  const maxV = Math.max(...points.map(p => p.avgW), 1);
+  const pad = { l: 40, r: 10, t: 10, b: 30 };
+  const chartW = W - pad.l - pad.r;
+  const chartH = H - pad.t - pad.b;
+
+  // Grid
+  ctx.strokeStyle = '#1e2d45';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + (i / 4) * chartH;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+    ctx.fillStyle = '#64748b';
+    ctx.font = '9px JetBrains Mono, monospace';
+    ctx.fillText(((maxV * (1 - i/4)).toFixed(1)), 2, y + 3);
+  }
+
+  // Line
+  ctx.beginPath();
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 2;
+  points.forEach((p, i) => {
+    const x = pad.l + (i / (points.length - 1 || 1)) * chartW;
+    const y = pad.t + (1 - p.avgW / maxV) * chartH;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Fill
+  ctx.lineTo(pad.l + chartW, pad.t + chartH);
+  ctx.lineTo(pad.l, pad.t + chartH);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(245,158,11,0.08)';
+  ctx.fill();
+
+  // X labels
+  ctx.fillStyle = '#64748b';
+  ctx.font = '9px JetBrains Mono, monospace';
+  [0, 0.25, 0.5, 0.75, 1].forEach(f => {
+    const x = pad.l + f * chartW;
+    const t = Math.round(f * (points[points.length-1]?.t || 0));
+    ctx.fillText(t + 'm', x - 8, H - 8);
+  });
+}
+
+// ──────────────────────────────────────────────
+// INSIGHT
+// ──────────────────────────────────────────────
+function showInsight(numAgen, avgWait, served, maxQueue) {
+  const box = document.getElementById('insightBox');
+  const icon = parseFloat(avgWait) < 5 ? '✅' : parseFloat(avgWait) < 15 ? '⚠️' : '🔴';
+  box.innerHTML = `
+    <div class="insight-box">
+      ${icon} &nbsp;
+      <span>Dengan <strong>${numAgen} agen</strong>, rata-rata tunggu = <strong>${avgWait} menit</strong> · ${served} penumpang dilayani · Max antrian = ${maxQueue} penumpang</span>
+    </div>
+  `;
+}
+
+// ──────────────────────────────────────────────
+// RESET
+// ──────────────────────────────────────────────
+function resetVisuals() {
+  document.getElementById('logBox').innerHTML = '<div style="color:var(--text-muted);">// Memulai simulasi...</div>';
+  document.getElementById('queueViz').innerHTML = '';
+  document.getElementById('queueCount').textContent = '0 penumpang menunggu';
+  document.getElementById('statServed').textContent = '0';
+  document.getElementById('statAvgWait').textContent = '0.00';
+  document.getElementById('statMaxQueue').textContent = '0';
+  document.getElementById('statUtil').textContent = '0%';
+  document.getElementById('simProgress').style.width = '0%';
+  document.getElementById('insightBox').innerHTML = '';
+  const ctx = document.getElementById('waitChart').getContext('2d');
+  ctx.clearRect(0, 0, 9999, 9999);
+}
+
+function resetAll() {
+  resetVisuals();
+  document.getElementById('agentsViz').innerHTML = '';
+}
+</script>
+</body>
+</html>

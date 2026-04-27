@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kasus 2: Permainan Hot Potato</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #181c27;
+      --surface2: #1e2333;
+      --border: #2a2f45;
+      --accent: #f97316;
+      --accent2: #fbbf24;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --info: #3b82f6;
+      --text: #e8eaf0;
+      --muted: #6b7280;
+      --code-bg: #0d1117;
+    }
+
+    body {
+      font-family: 'Sora', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .page { max-width: 960px; margin: 0 auto; animation: fadeIn 0.4s ease; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes eliminated { 0% { opacity:1; transform: scale(1); } 50% { opacity:0.3; transform: scale(0.85); } 100% { opacity:0.18; transform: scale(0.9); } }
+
+    /* HEADER */
+    .header { margin-bottom: 2rem; position: relative; padding-left: 1rem; }
+    .header::before { content:''; position:absolute; left:0; top:0; width:4px; height:100%; background: linear-gradient(180deg, var(--accent), var(--accent2)); border-radius:2px; }
+    .header-tag { font-family:'JetBrains Mono',monospace; font-size:0.68rem; color:var(--accent2); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.4rem; }
+    .header h1 { font-size:1.9rem; font-weight:700; line-height:1.2; }
+    .header p { margin-top:0.35rem; color:var(--muted); font-size:0.88rem; }
+
+    /* STATS */
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:1.2rem; }
+    .stat { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:0.85rem 1rem; text-align:center; }
+    .stat-val { font-size:1.6rem; font-weight:700; font-family:'JetBrains Mono',monospace; line-height:1; }
+    .stat-val.orange { color:var(--accent); }
+    .stat-val.yellow { color:var(--accent2); }
+    .stat-val.green  { color:var(--success); }
+    .stat-lbl { font-size:0.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-top:4px; }
+
+    /* SETUP PANEL */
+    .setup-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.25rem; margin-bottom:1.2rem; }
+    .card-label { font-family:'JetBrains Mono',monospace; font-size:0.63rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:0.9rem; display:flex; align-items:center; gap:6px; }
+    .card-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    .setup-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    @media(max-width:580px){ .setup-grid { grid-template-columns:1fr; } }
+
+    label { font-size:0.78rem; color:var(--muted); display:block; margin-bottom:4px; }
+    input[type="text"], input[type="number"] {
+      width:100%; background:var(--code-bg); border:1px solid var(--border); color:var(--text);
+      padding:8px 11px; border-radius:7px; font-family:'JetBrains Mono',monospace; font-size:0.78rem;
+    }
+    input:focus { outline:none; border-color:var(--accent); }
+
+    .player-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; min-height:34px; }
+    .ptag {
+      display:flex; align-items:center; gap:5px; padding:4px 10px;
+      background:var(--surface2); border:1px solid var(--border); border-radius:20px;
+      font-size:0.72rem; font-family:'JetBrains Mono',monospace; animation:slideIn 0.2s ease;
+    }
+    .ptag .rm { cursor:pointer; color:var(--muted); font-size:10px; line-height:1; }
+    .ptag .rm:hover { color:var(--danger); }
+
+    .input-row { display:flex; gap:6px; }
+    input[type="text"].inline { flex:1; }
+
+    button { font-family:'Sora',sans-serif; cursor:pointer; border:none; border-radius:7px; transition:all 0.15s ease; }
+    .btn-add { background:var(--surface2); color:var(--text); border:1px solid var(--border); padding:8px 13px; font-size:0.75rem; }
+    .btn-add:hover { border-color:var(--accent); color:var(--accent); }
+
+    .btn-start {
+      width:100%; padding:11px; font-size:0.88rem; font-weight:700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color:#111; border-radius:8px; margin-top:1rem; letter-spacing:0.03em;
+    }
+    .btn-start:hover { opacity:0.85; transform:translateY(-1px); }
+    .btn-start:disabled { opacity:0.3; cursor:not-allowed; transform:none; }
+
+    /* GAME AREA */
+    .game-area { display:none; }
+    .game-area.active { display:block; }
+
+    .main-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin-bottom:1.2rem; }
+    @media(max-width:600px){ .main-grid { grid-template-columns:1fr; } }
+
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.25rem; }
+
+    /* CIRCLE ARENA */
+    .arena-wrap { position:relative; width:220px; height:220px; margin:0 auto 1rem; }
+    .arena-svg { width:100%; height:100%; }
+
+    /* QUEUE LIST */
+    .queue-list { display:flex; flex-direction:column; gap:5px; min-height:130px; max-height:260px; overflow-y:auto; }
+    .q-item {
+      display:flex; align-items:center; gap:8px; padding:7px 10px;
+      background:var(--surface2); border:1px solid var(--border); border-radius:6px;
+      font-family:'JetBrains Mono',monospace; font-size:0.74rem; animation:slideIn 0.2s ease;
+    }
+    .q-item.holding { border-color:var(--accent); background:rgba(249,115,22,0.08); }
+    .q-idx { color:var(--muted); min-width:18px; font-size:0.63rem; }
+    .q-name { flex:1; }
+    .q-badge { font-size:0.6rem; padding:2px 7px; border-radius:4px; background:rgba(249,115,22,0.15); color:var(--accent); font-weight:600; }
+    .q-elim { text-decoration:line-through; color:var(--muted); }
+
+    /* CONTROL */
+    .ctrl-panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.25rem; margin-bottom:1.2rem; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .btn-step {
+      padding:10px 20px; font-size:0.82rem; font-weight:600;
+      background: linear-gradient(135deg,var(--accent),var(--accent2));
+      color:#111; border-radius:8px;
+    }
+    .btn-step:hover { opacity:0.85; transform:translateY(-1px); }
+    .btn-step:disabled { opacity:0.3; cursor:not-allowed; transform:none; }
+    .btn-auto2 {
+      padding:9px 16px; font-size:0.78rem; font-weight:600;
+      background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:8px;
+    }
+    .btn-auto2:hover { border-color:var(--accent2); }
+    .btn-reset {
+      padding:9px 16px; font-size:0.78rem; background:var(--surface2);
+      color:var(--muted); border:1px solid var(--border); border-radius:8px; margin-left:auto;
+    }
+    .btn-reset:hover { color:var(--danger); border-color:var(--danger); }
+
+    .pass-info {
+      font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--muted);
+      padding:8px 12px; background:var(--code-bg); border-radius:7px; flex:1; min-width:160px;
+    }
+    .pass-info span { color:var(--accent); font-weight:600; }
+
+    /* LOG */
+    .log-area {
+      background:var(--code-bg); border:1px solid var(--border); border-radius:8px;
+      padding:1rem; min-height:130px; max-height:220px; overflow-y:auto;
+      font-family:'JetBrains Mono',monospace; font-size:0.74rem;
+      display:flex; flex-direction:column; gap:3px;
+    }
+    .l-cm { color:#4b5563; }
+    .l-pass { color:var(--muted); }
+    .l-elim { color:var(--danger); }
+    .l-win  { color:var(--success); font-weight:600; }
+    .l-round { color:var(--accent2); }
+
+    /* WINNER BANNER */
+    .winner-banner {
+      display:none; background:linear-gradient(135deg,rgba(249,115,22,0.15),rgba(251,191,36,0.12));
+      border:1px solid var(--accent); border-radius:12px; padding:1.5rem;
+      text-align:center; margin-bottom:1.2rem; animation:slideIn 0.3s ease;
+    }
+    .winner-banner.show { display:block; }
+    .winner-trophy { font-size:2.5rem; margin-bottom:0.5rem; }
+    .winner-name { font-size:1.5rem; font-weight:700; color:var(--accent2); }
+    .winner-sub { font-size:0.8rem; color:var(--muted); margin-top:0.3rem; }
+
+    /* CODE CARD */
+    .code-card { background:var(--code-bg); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+    .code-header { background:var(--surface); border-bottom:1px solid var(--border); padding:8px 14px; display:flex; align-items:center; gap:6px; }
+    .dot { width:10px; height:10px; border-radius:50%; }
+    .d1{background:#ef4444;} .d2{background:#f59e0b;} .d3{background:#22c55e;}
+    .code-lang { margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:0.63rem; color:var(--muted); }
+    pre { padding:1rem 1.25rem; font-family:'JetBrains Mono',monospace; font-size:0.77rem; line-height:1.85; overflow-x:auto; color:#cdd6f4; }
+    .kw{color:#cba6f7;} .fn{color:#89b4fa;} .st{color:#a6e3a1;} .cm{color:#6c7086;} .va{color:#cdd6f4;}
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-tag">Struktur Data — Circular Queue</div>
+    <h1>Kasus 2: Permainan Hot Potato</h1>
+    <p>Simulasi permainan menggunakan circular queue</p>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat"><div class="stat-val orange" id="s-players">0</div><div class="stat-lbl">Pemain Aktif</div></div>
+    <div class="stat"><div class="stat-val yellow" id="s-round">0</div><div class="stat-lbl">Ronde</div></div>
+    <div class="stat"><div class="stat-val green"  id="s-elim">0</div><div class="stat-lbl">Tersingkir</div></div>
+  </div>
+
+  <!-- SETUP -->
+  <div class="setup-card" id="setup-panel">
+    <div class="card-label">Setup Permainan</div>
+    <div class="setup-grid">
+      <div>
+        <label>Tambah pemain</label>
+        <div class="input-row">
+          <input type="text" class="inline" id="player-input" placeholder="nama pemain" />
+          <button class="btn-add" onclick="addPlayer()">+ Tambah</button>
+        </div>
+        <div class="player-tags" id="player-tags"></div>
+      </div>
+      <div>
+        <label>Jumlah oper per ronde (N)</label>
+        <input type="number" id="num-passes" value="5" min="1" max="50"/>
+        <p style="font-size:0.7rem;color:var(--muted);margin-top:6px;">Setelah N kali oper, pemain yang pegang benda tersingkir.</p>
+      </div>
+    </div>
+    <button class="btn-start" id="btn-start" onclick="startGame()" disabled>🥔 Mulai Permainan</button>
+  </div>
+
+  <!-- GAME AREA -->
+  <div class="game-area" id="game-area">
+
+    <div class="ctrl-panel">
+      <button class="btn-step" id="btn-step" onclick="stepRound()">▶ Oper & Singkirkan</button>
+      <button class="btn-auto2" onclick="autoPlay()">⚡ Auto Selesai</button>
+      <div class="pass-info" id="pass-info">Ronde: <span>—</span></div>
+      <button class="btn-reset" onclick="resetGame()">↺ Reset</button>
+    </div>
+
+    <div class="main-grid">
+      <!-- CIRCLE ARENA -->
+      <div class="card">
+        <div class="card-label">Arena Pemain</div>
+        <div class="arena-wrap">
+          <svg class="arena-svg" id="arena-svg" viewBox="0 0 220 220"></svg>
+        </div>
+        <div style="text-align:center;font-size:0.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace;" id="arena-label">🥔 = memegang benda</div>
+      </div>
+
+      <!-- QUEUE STATE -->
+      <div class="card">
+        <div class="card-label">Antrian (Circular Queue)</div>
+        <div class="queue-list" id="queue-display"></div>
+      </div>
+    </div>
+
+    <!-- LOG -->
+    <div class="card" style="margin-bottom:1.2rem;">
+      <div class="card-label">Output Log</div>
+      <div class="log-area" id="log-area">
+        <div class="l-cm"># log permainan akan muncul di sini</div>
+      </div>
+    </div>
+
+    <!-- WINNER -->
+    <div class="winner-banner" id="winner-banner">
+      <div class="winner-trophy">🏆</div>
+      <div class="winner-name" id="winner-name">—</div>
+      <div class="winner-sub">Pemenang Hot Potato!</div>
+    </div>
+
+  </div>
+
+  <!-- SOURCE CODE -->
+  <div class="code-card">
+    <div class="code-header">
+      <div class="dot d1"></div><div class="dot d2"></div><div class="dot d3"></div>
+      <span class="code-lang">hot_potato.py — referensi kode</span>
+    </div>
+    <pre><span class="kw">def</span> <span class="fn">hot_potato</span>(<span class="va">names</span>, <span class="va">num</span>):
+  <span class="va">q</span> = <span class="fn">Queue</span>()
+  <span class="kw">for</span> <span class="va">name</span> <span class="kw">in</span> <span class="va">names</span>:
+    <span class="va">q</span>.<span class="fn">enqueue</span>(<span class="va">name</span>)
+
+  <span class="kw">while</span> <span class="fn">len</span>(<span class="va">q</span>) > <span class="st">1</span>:
+    <span class="kw">for</span> <span class="va">_</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="va">num</span>):
+      <span class="cm"># Oper: dequeue depan, enqueue belakang</span>
+      <span class="va">q</span>.<span class="fn">enqueue</span>(<span class="va">q</span>.<span class="fn">dequeue</span>())
+    <span class="va">q</span>.<span class="fn">dequeue</span>()  <span class="cm"># Tersingkir!</span>
+
+  <span class="kw">return</span> <span class="va">q</span>.<span class="fn">dequeue</span>()  <span class="cm"># Pemenang!</span></pre>
+  </div>
+
+</div>
+
+<script>
+  // ── DATA ──
+  let players = [];
+  let queue = [];
+  let eliminated = [];
+  let numPasses = 5;
+  let round = 0;
+  let gameOver = false;
+  let logStarted = false;
+
+  const COLORS = ['#f97316','#3b82f6','#22c55e','#a855f7','#ec4899','#06b6d4','#f59e0b','#ef4444','#14b8a6','#84cc16'];
+
+  // ── SETUP ──
+  const defaultPlayers = ['Alice','Bob','Charlie','Diana','Erik'];
+  defaultPlayers.forEach(p => { players.push(p); renderTags(); });
+
+  document.getElementById('player-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addPlayer();
+  });
+
+  function addPlayer() {
+    const inp = document.getElementById('player-input');
+    const val = inp.value.trim();
+    if (!val || players.includes(val)) return;
+    players.push(val);
+    inp.value = '';
+    renderTags();
+    updateStartBtn();
+  }
+
+  function removePlayer(name) {
+    players = players.filter(p => p !== name);
+    renderTags();
+    updateStartBtn();
+  }
+
+  function renderTags() {
+    const el = document.getElementById('player-tags');
+    el.innerHTML = players.map((p,i) => `
+      <div class="ptag" style="border-color:${COLORS[i%COLORS.length]}33;">
+        <span style="color:${COLORS[i%COLORS.length]};font-size:8px;">●</span>
+        ${p}
+        <span class="rm" onclick="removePlayer('${p}')">✕</span>
+      </div>
+    `).join('');
+  }
+
+  function updateStartBtn() {
+    document.getElementById('btn-start').disabled = players.length < 2;
+  }
+  updateStartBtn();
+
+  // ── GAME ──
+  function startGame() {
+    numPasses = parseInt(document.getElementById('num-passes').value) || 5;
+    queue = [...players];
+    eliminated = [];
+    round = 0;
+    gameOver = false;
+    logStarted = false;
+
+    document.getElementById('setup-panel').style.display = 'none';
+    document.getElementById('game-area').classList.add('active');
+    document.getElementById('winner-banner').classList.remove('show');
+    document.getElementById('log-area').innerHTML = '<div class="l-cm"># Permainan dimulai!</div>';
+    logStarted = true;
+
+    addLog(`# Pemain: ${players.join(', ')}`, 'l-cm');
+    addLog(`# Jumlah oper per ronde: ${numPasses}`, 'l-cm');
+    addLog('', 'l-cm');
+
+    updateStats();
+    renderQueueDisplay();
+    renderArena();
+    updatePassInfo();
+  }
+
+  function stepRound() {
+    if (gameOver || queue.length <= 1) return;
+    round++;
+    addLog(`# Ronde ${round}`, 'l-round');
+
+    // Oper N kali (dequeue front → enqueue back)
+    for (let i = 0; i < numPasses; i++) {
+      const front = queue.shift();
+      queue.push(front);
+      addLog(`  oper: ${front} → belakang`, 'l-pass');
+    }
+
+    // Tersingkir
+    const out = queue.shift();
+    eliminated.push(out);
+    addLog(`  💀 Tersingkir: ${out}`, 'l-elim');
+
+    if (queue.length === 1) {
+      gameOver = true;
+      const winner = queue[0];
+      addLog(``, 'l-cm');
+      addLog(`🏆 Pemenang: ${winner}`, 'l-win');
+      document.getElementById('winner-name').textContent = winner;
+      document.getElementById('winner-banner').classList.add('show');
+      document.getElementById('btn-step').disabled = true;
+    }
+
+    updateStats();
+    renderQueueDisplay();
+    renderArena();
+    updatePassInfo();
+  }
+
+  function autoPlay() {
+    if (gameOver) return;
+    const delay = queue.length > 6 ? 500 : 700;
+    const interval = setInterval(() => {
+      if (queue.length <= 1 || gameOver) { clearInterval(interval); return; }
+      stepRound();
+    }, delay);
+  }
+
+  function resetGame() {
+    document.getElementById('setup-panel').style.display = 'block';
+    document.getElementById('game-area').classList.remove('active');
+    document.getElementById('btn-step').disabled = false;
+    document.getElementById('winner-banner').classList.remove('show');
+    queue = []; eliminated = []; round = 0; gameOver = false;
+    updateStats();
+  }
+
+  // ── RENDER ──
+  function updateStats() {
+    document.getElementById('s-players').textContent = queue.length;
+    document.getElementById('s-round').textContent = round;
+    document.getElementById('s-elim').textContent = eliminated.length;
+  }
+
+  function updatePassInfo() {
+    document.getElementById('pass-info').innerHTML =
+      `Ronde: <span>${round}</span> &nbsp;|&nbsp; Oper/ronde: <span>${numPasses}</span> &nbsp;|&nbsp; Sisa: <span>${queue.length}</span>`;
+  }
+
+  function renderQueueDisplay() {
+    const el = document.getElementById('queue-display');
+    if (queue.length === 0) { el.innerHTML = '<div style="color:var(--muted);font-size:0.78rem;text-align:center;padding:2rem 0;font-family:JetBrains Mono,monospace;">// antrian kosong</div>'; return; }
+    el.innerHTML = queue.map((name, i) => {
+      const color = COLORS[players.indexOf(name) % COLORS.length];
+      const isFirst = i === 0;
+      return `<div class="q-item ${isFirst ? 'holding' : ''}">
+        <span class="q-idx">${i+1}</span>
+        <span style="color:${color};font-size:10px;">●</span>
+        <span class="q-name">${name}</span>
+        ${isFirst ? '<span class="q-badge">🥔 pegang</span>' : ''}
+      </div>`;
+    }).join('') +
+    (eliminated.length ? eliminated.map(name => `
+      <div class="q-item" style="opacity:0.3;">
+        <span class="q-idx">✕</span>
+        <span style="font-size:10px;color:var(--danger);">●</span>
+        <span class="q-elim">${name}</span>
+        <span style="font-size:0.6rem;color:var(--danger);margin-left:auto;">tersingkir</span>
+      </div>`).join('') : '');
+  }
+
+  function renderArena() {
+    const svg = document.getElementById('arena-svg');
+    const cx = 110, cy = 110, r = 85;
+    const total = players.length;
+    const active = new Set(queue);
+    const holder = queue[0];
+
+    let html = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#2a2f45" stroke-width="1" stroke-dasharray="4 4"/>`;
+
+    players.forEach((name, i) => {
+      const angle = (2 * Math.PI * i / total) - Math.PI / 2;
+      const px = cx + r * Math.cos(angle);
+      const py = cy + r * Math.sin(angle);
+      const isActive = active.has(name);
+      const isHolder = name === holder;
+      const color = COLORS[i % COLORS.length];
+      const opacity = isActive ? 1 : 0.18;
+      const rad = isHolder ? 22 : 18;
+
+      html += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${rad}" fill="${color}22" stroke="${color}" stroke-width="${isHolder ? 2.5 : 1.5}" opacity="${opacity}"/>`;
+
+      // Name label
+      const short = name.length > 6 ? name.slice(0,5)+'…' : name;
+      html += `<text x="${px.toFixed(1)}" y="${(py+1).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" fill="${color}" font-family="Sora,sans-serif" font-size="${isHolder ? 9 : 8}" font-weight="${isHolder ? '700':'400'}" opacity="${opacity}">${short}</text>`;
+
+      // Hot potato emoji
+      if (isHolder) {
+        html += `<text x="${(px+14).toFixed(1)}" y="${(py-14).toFixed(1)}" font-size="13">🥔</text>`;
+      }
+
+      // Eliminated X
+      if (!isActive) {
+        html += `<text x="${px.toFixed(1)}" y="${py.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" fill="#ef4444" font-size="18" opacity="0.5">✕</text>`;
+      }
+    });
+
+    // Center label
+    html += `<text x="${cx}" y="${cy-8}" text-anchor="middle" fill="#6b7280" font-family="JetBrains Mono,monospace" font-size="9">sisa pemain</text>`;
+    html += `<text x="${cx}" y="${cy+8}" text-anchor="middle" fill="${queue.length === 1 ? '#22c55e' : '#f97316'}" font-family="JetBrains Mono,monospace" font-size="22" font-weight="700">${queue.length}</text>`;
+
+    svg.innerHTML = html;
+  }
+
+  function addLog(text, cls) {
+    const el = document.getElementById('log-area');
+    const div = document.createElement('div');
+    div.className = 'l-cm ' + cls;
+    div.textContent = text;
+    el.appendChild(div);
+    el.scrollTop = el.scrollHeight;
+  }
+</script>
+</body>
+</html>
